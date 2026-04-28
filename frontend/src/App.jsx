@@ -91,6 +91,7 @@ function App() {
     last: true
   });
   const [filters, setFilters] = useState(defaultFilters);
+  const [draftFilters, setDraftFilters] = useState(defaultFilters);
   const [form, setForm] = useState(initialForm);
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState("desc");
@@ -164,10 +165,10 @@ function App() {
     }
   }
 
-  async function loadRecords() {
+  async function loadRecords(nextFilters = filters, nextPage = page) {
     setIsRecordsLoading(true);
     try {
-      const response = await buildRecordsRequest();
+      const response = await buildRecordsRequest(nextFilters, nextPage);
       setRecordsPage(response);
       setTableMessage("");
     } catch (error) {
@@ -178,19 +179,19 @@ function App() {
     }
   }
 
-  function buildRecordsRequest() {
-    const path = hasActiveFilters() ? "/traffic/filter" : "/traffic/all";
+  function buildRecordsRequest(activeFilters = filters, activePage = page) {
+    const path = hasActiveFilters(activeFilters) ? "/traffic/filter" : "/traffic/all";
     const query = new URLSearchParams({
-      page: String(page),
+      page: String(activePage),
       size: String(pageSize),
       sortBy,
       order: sortOrder
     });
 
-    if (filters.zone) query.set("zone", filters.zone);
-    if (filters.status) query.set("status", filters.status);
-    if (filters.minSpeed) query.set("minSpeed", filters.minSpeed);
-    if (filters.maxSpeed) query.set("maxSpeed", filters.maxSpeed);
+    if (activeFilters.zone) query.set("zone", activeFilters.zone);
+    if (activeFilters.status) query.set("status", activeFilters.status);
+    if (activeFilters.minSpeed) query.set("minSpeed", activeFilters.minSpeed);
+    if (activeFilters.maxSpeed) query.set("maxSpeed", activeFilters.maxSpeed);
 
     return apiFetch(`${path}?${query.toString()}`);
   }
@@ -259,8 +260,8 @@ function App() {
     }
   }
 
-  function hasActiveFilters() {
-    return Boolean(filters.zone || filters.status || filters.minSpeed || filters.maxSpeed);
+  function hasActiveFilters(activeFilters = filters) {
+    return Boolean(activeFilters.zone || activeFilters.status || activeFilters.minSpeed || activeFilters.maxSpeed);
   }
 
   function handleFormChange(field, value) {
@@ -368,25 +369,21 @@ function App() {
 
   async function applyFilters(event) {
     event.preventDefault();
+    setFilters(draftFilters);
     setPage(0);
-    await loadRecords();
+    await loadRecords(draftFilters, 0);
   }
 
   function clearFilters() {
+    setDraftFilters(defaultFilters);
     setFilters(defaultFilters);
     setSortBy("createdAt");
     setSortOrder("desc");
     setPageSize(5);
     setPage(0);
     setTableMessage("");
+    loadRecords(defaultFilters, 0).catch((error) => setTableMessage(error.message || "Could not refresh records."));
   }
-
-  useEffect(() => {
-    if (!hasActiveFilters() && page === 0 && sortBy === "createdAt" && sortOrder === "desc" && pageSize === 5) {
-      return;
-    }
-    loadRecords().catch((error) => setTableMessage(error.message || "Could not refresh records."));
-  }, [filters]);
 
   return (
     <div className="min-h-screen bg-shell text-ink">
@@ -621,16 +618,16 @@ function App() {
             <Field label="Zone">
               <input
                 className="input-surface"
-                value={filters.zone}
-                onChange={(event) => setFilters((current) => ({ ...current, zone: event.target.value }))}
+                value={draftFilters.zone}
+                onChange={(event) => setDraftFilters((current) => ({ ...current, zone: event.target.value }))}
                 placeholder="Pune"
               />
             </Field>
             <Field label="Status">
               <select
                 className="input-surface"
-                value={filters.status}
-                onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))}
+                value={draftFilters.status}
+                onChange={(event) => setDraftFilters((current) => ({ ...current, status: event.target.value }))}
               >
                 <option value="">All records</option>
                 <option value="VIOLATION">Violation</option>
@@ -643,8 +640,8 @@ function App() {
                 className="input-surface"
                 type="number"
                 min="1"
-                value={filters.minSpeed}
-                onChange={(event) => setFilters((current) => ({ ...current, minSpeed: event.target.value }))}
+                value={draftFilters.minSpeed}
+                onChange={(event) => setDraftFilters((current) => ({ ...current, minSpeed: event.target.value }))}
                 placeholder="90"
               />
             </Field>
@@ -653,8 +650,8 @@ function App() {
                 className="input-surface"
                 type="number"
                 min="1"
-                value={filters.maxSpeed}
-                onChange={(event) => setFilters((current) => ({ ...current, maxSpeed: event.target.value }))}
+                value={draftFilters.maxSpeed}
+                onChange={(event) => setDraftFilters((current) => ({ ...current, maxSpeed: event.target.value }))}
                 placeholder="150"
               />
             </Field>
