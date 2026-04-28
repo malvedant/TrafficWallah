@@ -363,21 +363,23 @@ function App() {
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-3xl space-y-3">
               <div className="flex flex-wrap items-center gap-3">
-                <div className="flex h-14 w-14 items-center justify-center rounded-lg border border-white/12 bg-white/10 p-2 shadow-[0_12px_30px_rgba(7,14,24,0.28)] backdrop-blur">
+                <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_14px_34px_rgba(7,14,24,0.22)] sm:h-22 sm:w-22">
                   <img
                     src="/logo.png"
                     alt="Indian Traffic Police"
-                    className="h-full w-full object-contain"
+                    className="h-full w-full scale-[1.16] object-cover"
                   />
                 </div>
-                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-sm font-medium text-slate-100 backdrop-blur">
-                  <FiServer className="text-sm" />
-                  Traffic Violation Dashboard
-                </span>
-                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-sm font-medium text-slate-100 backdrop-blur">
-                  <FiDatabase className="text-sm" />
-                  Live records
-                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-sm font-medium text-slate-100 backdrop-blur">
+                    <FiServer className="text-sm" />
+                    Traffic Violation Dashboard
+                  </span>
+                  <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-sm font-medium text-slate-100 backdrop-blur">
+                    <FiDatabase className="text-sm" />
+                    Live records
+                  </span>
+                </div>
               </div>
               <div>
                 <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
