@@ -2,7 +2,7 @@
 
 Production-ready Spring Boot REST API for detecting, storing, and analyzing traffic violations.
 
-The project now also includes a built-in frontend dashboard served by Spring Boot at `/`.
+The project includes a standalone React + Tailwind frontend for Netlify and a Spring Boot backend API for Render.
 
 ## Folder Structure
 
@@ -117,9 +117,17 @@ H2 console:
 - Username: `sa`
 - Password: empty
 
-Frontend dashboard:
+Standalone frontend:
 
-- URL: `http://localhost:8080/`
+- React app lives in [frontend](C:/Users/kushd/OneDrive/Desktop/TrafficPranav/frontend)
+- Set `VITE_API_BASE_URL` to your deployed Render backend URL before or during Netlify deploy
+- Local frontend dev server:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
 ## Production Run with MySQL
 
@@ -140,7 +148,7 @@ mvn clean install
 java -jar target/app.jar
 ```
 
-## Render Deployment
+## Render Backend Deployment
 
 1. Push the project to GitHub.
 2. Create a MySQL database (Render does not provide native MySQL, so use an external MySQL provider such as Aiven, PlanetScale, Railway MySQL, Neon via compatible MySQL offering, or another hosted MySQL service).
@@ -165,12 +173,29 @@ java -jar target/app.jar
    - `DB_PASSWORD=<password>`
    - `PORT=10000` (or Render-provided port)
    - `JPA_DDL_AUTO=update`
+   - `ALLOWED_ORIGINS=https://<your-netlify-site>.netlify.app`
 
 8. Optional health check path:
 
    ```text
    /actuator/health
    ```
+
+## Netlify Frontend Deployment
+
+1. Use the `frontend` folder as the Netlify site root.
+2. In Netlify environment variables, set:
+
+   ```text
+   VITE_API_BASE_URL=https://<your-render-backend>.onrender.com
+   ```
+
+3. In Netlify:
+   - Base directory: `frontend`
+   - Build command: `npm run build`
+   - Publish directory: `dist`
+4. Deploy the site.
+5. After you get the Netlify domain, add it to backend CORS through `ALLOWED_ORIGINS`.
 
 ## Notes
 
