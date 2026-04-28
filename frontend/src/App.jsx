@@ -442,8 +442,8 @@ function App() {
       </header>
 
       <main className="mx-auto grid max-w-7xl gap-5 px-4 py-5 sm:px-6 lg:px-8">
-        <section className="grid items-start gap-5 lg:grid-cols-[1.55fr_0.95fr]">
-          <div className="grid self-start gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <section className="grid gap-5">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <MetricCard icon={FiAlertTriangle} label="Total violations" value={stats.totalViolations} footnote="Recorded cases in the current database" loading={isDashboardLoading} />
             <MetricCard icon={FiTrendingUp} label="Total fine collected" value={formatCurrency(stats.totalFineCollected)} footnote="Total amount across stored violations" loading={isDashboardLoading} />
             <MetricCard icon={FiMapPin} label="Most active zone" value={topZone} footnote="Zone with the highest number of violations" loading={isDashboardLoading} />
