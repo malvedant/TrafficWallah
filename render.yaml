@@ -1,10 +1,8 @@
 services:
   - type: web
     name: smart-traffic-violation-system
-    runtime: java
+    runtime: docker
     plan: free
-    buildCommand: mvn clean install
-    startCommand: java -jar target/app.jar
     healthCheckPath: /actuator/health
     envVars:
       - key: SPRING_PROFILES_ACTIVE
