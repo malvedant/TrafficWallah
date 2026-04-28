@@ -450,23 +450,18 @@ function App() {
               )}
               {!isDashboardLoading && zoneEntries.length ? (
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {zoneEntries.map(([zone, count]) => (
+                  {zoneEntries.map(([zone, count], index) => (
                     <motion.div
                       key={zone}
                       layout
                       className="rounded-lg border border-white/10 bg-white/40 px-4 py-3"
                     >
                       <div className="flex items-center justify-between gap-3">
-                        <span className="min-w-0 break-words font-medium text-ink">{zone}</span>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-ink" title={zone}>{zone}</p>
+                          <p className="mt-1 text-xs text-slate-500">Rank #{index + 1}</p>
+                        </div>
                         <span className="shrink-0 rounded-full bg-white px-3 py-1 text-sm font-semibold text-slate-700">{count}</span>
-                      </div>
-                      <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
-                        <motion.div
-                          className="h-full rounded-full bg-[linear-gradient(90deg,#0f766e_0%,#14b8a6_100%)]"
-                          initial={{ width: 0 }}
-                          animate={{ width: `${zoneMax ? (count / zoneMax) * 100 : 0}%` }}
-                          transition={{ duration: 0.45, ease: "easeOut" }}
-                        />
                       </div>
                     </motion.div>
                   ))}
@@ -820,6 +815,7 @@ function SectionHeader({ eyebrow, title }) {
 }
 
 function MetricCard({ icon: Icon, label, value, footnote, loading = false }) {
+  const resolvedValue = String(value ?? "");
   return (
     <motion.article
       className="panel panel-soft flex min-h-[168px] flex-col justify-between p-5"
@@ -830,7 +826,10 @@ function MetricCard({ icon: Icon, label, value, footnote, loading = false }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <span className="text-sm font-medium text-slate-500">{label}</span>
-          <div className="mt-3 break-words text-2xl font-semibold text-ink sm:text-3xl">
+          <div
+            className="mt-3 truncate text-2xl font-semibold text-ink sm:text-3xl"
+            title={!loading ? resolvedValue : undefined}
+          >
             {loading ? <SkeletonBlock className="h-8 w-28 sm:h-9 sm:w-36" /> : value}
           </div>
         </div>
@@ -919,36 +918,132 @@ function ZoneChart({ entries, maxValue }) {
     return <EmptyInline text="Charts will appear once zone data is available." />;
   }
 
+  const chartEntries = entries.slice(0, 6);
+  const chartHeight = 260;
+  const chartWidth = 720;
+  const leftPad = 44;
+  const rightPad = 20;
+  const topPad = 24;
+  const bottomPad = 46;
+  const plotWidth = chartWidth - leftPad - rightPad;
+  const plotHeight = chartHeight - topPad - bottomPad;
+  const barGap = 18;
+  const barWidth = Math.max(36, (plotWidth - (chartEntries.length - 1) * barGap) / chartEntries.length);
+  const ticks = buildTicks(maxValue);
+
   return (
     <div className="rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,36,0.96)_0%,rgba(25,42,63,0.94)_100%)] p-4 text-white shadow-[0_18px_40px_rgba(15,23,36,0.18)]">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-300">Zone chart</p>
-          <h3 className="mt-1 text-lg font-semibold text-white">Violation distribution</h3>
+          <h3 className="mt-1 text-lg font-semibold text-white">Violations by zone</h3>
         </div>
         <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-slate-200">
-          Peak {maxValue}
+          Top {chartEntries.length} zones
         </span>
       </div>
 
-      <div className="space-y-3">
-        {entries.map(([zone, count]) => (
-          <div key={zone} className="grid gap-2 sm:grid-cols-[minmax(0,150px)_1fr_auto] sm:items-center">
-            <div className="truncate text-sm font-medium text-slate-100">{zone}</div>
-            <div className="h-3 overflow-hidden rounded-full bg-white/10">
-              <motion.div
-                className="h-full rounded-full bg-[linear-gradient(90deg,#f59e0b_0%,#2dd4bf_100%)]"
-                initial={{ width: 0 }}
-                animate={{ width: `${maxValue ? (count / maxValue) * 100 : 0}%` }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
-              />
-            </div>
-            <div className="text-sm font-semibold text-white">{count}</div>
-          </div>
-        ))}
+      <div className="overflow-hidden rounded-lg border border-white/10 bg-white/[0.03] p-3">
+        <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-[260px] w-full" role="img" aria-label="Bar chart of violations by zone">
+          {ticks.map((tick) => {
+            const y = topPad + plotHeight - (tick / Math.max(maxValue, 1)) * plotHeight;
+            return (
+              <g key={tick}>
+                <line
+                  x1={leftPad}
+                  x2={chartWidth - rightPad}
+                  y1={y}
+                  y2={y}
+                  stroke="rgba(255,255,255,0.10)"
+                  strokeDasharray="4 6"
+                />
+                <text
+                  x={leftPad - 10}
+                  y={y + 4}
+                  textAnchor="end"
+                  fontSize="12"
+                  fill="rgba(226,232,240,0.9)"
+                >
+                  {tick}
+                </text>
+              </g>
+            );
+          })}
+
+          <line x1={leftPad} x2={leftPad} y1={topPad} y2={topPad + plotHeight} stroke="rgba(255,255,255,0.18)" />
+          <line x1={leftPad} x2={chartWidth - rightPad} y1={topPad + plotHeight} y2={topPad + plotHeight} stroke="rgba(255,255,255,0.18)" />
+
+          {chartEntries.map(([zone, count], index) => {
+            const x = leftPad + index * (barWidth + barGap);
+            const barHeight = maxValue ? (count / maxValue) * plotHeight : 0;
+            const y = topPad + plotHeight - barHeight;
+            return (
+              <g key={zone}>
+                <motion.rect
+                  initial={{ height: 0, y: topPad + plotHeight }}
+                  animate={{ height: barHeight, y }}
+                  transition={{ duration: 0.45, ease: "easeOut", delay: index * 0.06 }}
+                  x={x}
+                  y={y}
+                  width={barWidth}
+                  height={barHeight}
+                  rx="10"
+                  fill="url(#zoneBarGradient)"
+                />
+                <text
+                  x={x + barWidth / 2}
+                  y={y - 8}
+                  textAnchor="middle"
+                  fontSize="12"
+                  fontWeight="600"
+                  fill="rgba(255,255,255,0.95)"
+                >
+                  {count}
+                </text>
+                <text
+                  x={x + barWidth / 2}
+                  y={chartHeight - 16}
+                  textAnchor="middle"
+                  fontSize="12"
+                  fill="rgba(226,232,240,0.95)"
+                >
+                  {truncateLabel(zone, 12)}
+                </text>
+                <title>{`${zone}: ${count} violations`}</title>
+              </g>
+            );
+          })}
+
+          <defs>
+            <linearGradient id="zoneBarGradient" x1="0%" y1="100%" x2="0%" y2="0%">
+              <stop offset="0%" stopColor="#14b8a6" />
+              <stop offset="55%" stopColor="#2dd4bf" />
+              <stop offset="100%" stopColor="#f59e0b" />
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-4 text-xs text-slate-300">
+        <span className="inline-flex items-center gap-2">
+          <span className="h-2.5 w-2.5 rounded-full bg-teal-400" />
+          Chargeable violations
+        </span>
+        <span>Only fined records are included in analytics.</span>
       </div>
     </div>
   );
+}
+
+function buildTicks(maxValue) {
+  if (!maxValue) return [0, 1, 2, 3];
+  const step = Math.max(1, Math.ceil(maxValue / 4));
+  return [0, step, step * 2, step * 3, step * 4];
+}
+
+function truncateLabel(value, maxLength) {
+  if (value.length <= maxLength) return value;
+  return `${value.slice(0, Math.max(0, maxLength - 1))}…`;
 }
 
 function AnalyticsSkeleton() {
