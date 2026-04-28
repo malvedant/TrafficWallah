@@ -12,6 +12,7 @@
   body {
     margin: 0;
     min-height: 100vh;
+    background: #eef3f8;
   }
 
   * {
@@ -38,5 +39,10 @@
 
   .button-secondary {
     @apply inline-flex h-11 items-center justify-center rounded-lg border border-line bg-white px-4 text-sm font-semibold text-ink transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-slate-100;
+  }
+
+  .button-primary:disabled,
+  .button-secondary:disabled {
+    @apply cursor-not-allowed opacity-60 hover:bg-inherit;
   }
 }

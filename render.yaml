@@ -11,3 +11,5 @@ services:
         value: update
       - key: JPA_SHOW_SQL
         value: false
+      - key: ALLOWED_ORIGINS
+        value: https://trafficspringkush.netlify.app,http://localhost:5173,http://127.0.0.1:5173

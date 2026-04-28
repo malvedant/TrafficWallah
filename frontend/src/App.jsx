@@ -5,7 +5,6 @@ import {
   FiAlertTriangle,
   FiChevronLeft,
   FiChevronRight,
-  FiClock,
   FiDatabase,
   FiEdit3,
   FiFilter,
@@ -15,7 +14,6 @@ import {
   FiServer,
   FiTrash2,
   FiTrendingUp,
-  FiTruck,
   FiWifi,
   FiZap
 } from "react-icons/fi";
@@ -38,26 +36,26 @@ const initialForm = {
 const statusModes = {
   checking: {
     label: "Checking backend",
-    description: "Opening a link to the Render API and waiting for a healthy response.",
-    color: "from-sky-400 to-cyan-300",
+    description: "Checking the API health endpoint.",
+    color: "bg-sky-500",
     icon: FiWifi
   },
   waking: {
     label: "Waking server",
-    description: "Free-tier instance is likely asleep. First hit can take a little time.",
-    color: "from-amber-400 to-orange-300",
+    description: "The hosted API may take a moment on the first request.",
+    color: "bg-amber-500",
     icon: FiZap
   },
   live: {
     label: "Server live",
-    description: "Backend is awake and traffic data is syncing normally.",
-    color: "from-emerald-400 to-teal-300",
+    description: "Requests are succeeding and the dashboard is synced.",
+    color: "bg-emerald-500",
     icon: FiActivity
   },
   sleeping: {
-    label: "Sleeping or unreachable",
-    description: "Dashboard will keep retrying so the wake-up feels obvious instead of broken.",
-    color: "from-slate-400 to-slate-300",
+    label: "Unavailable",
+    description: "The dashboard will retry automatically.",
+    color: "bg-slate-500",
     icon: FiMoon
   }
 };
@@ -114,7 +112,7 @@ function App() {
   async function loadDashboard() {
     setStatus({
       mode: "waking",
-      note: "Pinging Render health endpoint. First wake-up can be slow."
+      note: "Checking the API. The first request can take longer than usual."
     });
 
     try {
@@ -133,15 +131,15 @@ function App() {
         mode: "live",
         note:
           latency > 4000
-            ? `Backend woke up in about ${latency} ms.`
-            : `Healthy response in about ${latency} ms.`
+            ? `API responded in about ${latency} ms after waking up.`
+            : `API responded in about ${latency} ms.`
       });
       setTableMessage("");
       stopPolling();
     } catch (error) {
       setStatus({
         mode: "sleeping",
-        note: error.message || "Backend is still waking up or temporarily unreachable."
+        note: error.message || "The backend is still waking up or temporarily unreachable."
       });
       setTableMessage(error.message || "Could not load dashboard data.");
       startPolling();
@@ -181,12 +179,14 @@ function App() {
     const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
 
     try {
+      const headers = options.headers ? { ...options.headers } : {};
+      if (options.body && !headers["Content-Type"]) {
+        headers["Content-Type"] = "application/json";
+      }
+
       const response = await fetch(`${API_BASE_URL}${path}`, {
         method: options.method || "GET",
-        headers: {
-          "Content-Type": "application/json",
-          ...(options.headers || {})
-        },
+        headers,
         body: options.body,
         signal: controller.signal
       });
@@ -205,7 +205,7 @@ function App() {
       return data;
     } catch (error) {
       if (error.name === "AbortError") {
-        throw new Error("The backend took too long to respond. Render may still be waking it up.");
+        throw new Error("The backend took too long to respond. The hosted server may still be waking up.");
       }
       throw error;
     } finally {
@@ -224,7 +224,7 @@ function App() {
         setStatus((previous) => ({
           ...previous,
           mode: "sleeping",
-          note: "Still waiting on the Render server. Retrying automatically."
+          note: "Still waiting for the API. Retrying automatically."
         }));
       }
     }, 15000);
@@ -269,7 +269,7 @@ function App() {
         });
         setFeedback({
           type: "success",
-          text: `Record #${updated.id} updated successfully. Fine is ${formatCurrency(updated.fine)}.`
+          text: `Record #${updated.id} updated. Fine: ${formatCurrency(updated.fine)}.`
         });
       } else {
         const result = await apiFetch("/traffic/check", {
@@ -279,8 +279,8 @@ function App() {
         setFeedback({
           type: result.violationDetected ? "success" : "warning",
           text: result.violationDetected
-            ? `Violation saved successfully. Fine applied: ${formatCurrency(result.fine)}.`
-            : "No violation detected. Record was not saved because the vehicle is within policy."
+            ? `Violation saved. Fine applied: ${formatCurrency(result.fine)}.`
+            : "No violation detected. The vehicle is within the configured rules."
         });
       }
 
@@ -308,7 +308,7 @@ function App() {
       });
       setFeedback({
         type: "warning",
-        text: `Editing record #${record.id}. Update fields and save to replace the current values.`
+        text: `Editing record #${record.id}. Update the fields and save the changes.`
       });
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
@@ -358,100 +358,79 @@ function App() {
 
   return (
     <div className="min-h-screen bg-shell text-ink">
-      <header className="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(74,222,128,0.08),_transparent_32%),linear-gradient(135deg,#09131F_0%,#12344D_52%,#185A74_100%)] px-5 pb-8 pt-8 text-white md:px-10">
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -left-16 top-12 h-40 w-40 rounded-full bg-emerald-300/10 blur-3xl" />
-          <div className="absolute right-0 top-0 h-56 w-56 animate-drift rounded-full bg-sky-300/10 blur-3xl" />
-        </div>
-        <div className="relative mx-auto grid max-w-7xl gap-6 xl:grid-cols-[1.25fr_0.85fr]">
-          <div className="space-y-4">
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200">
-              <FiServer className="text-sm" />
-              TrafficSpring Control Room
-            </span>
-            <div className="max-w-3xl space-y-4">
-              <h1 className="text-4xl font-semibold leading-tight sm:text-5xl">
-                Smart traffic violation monitoring with a frontend that actually looks deployed on purpose.
-              </h1>
-              <p className="max-w-2xl text-sm leading-7 text-slate-200 sm:text-base">
-                Netlify serves the dashboard, Render serves the API, and the interface makes the free-tier sleep behavior visible instead of awkward.
-              </p>
+      <header className="border-b border-line bg-white">
+        <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div className="max-w-3xl space-y-3">
+              <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-slate-600">
+                <span className="inline-flex items-center gap-2 rounded-full bg-mist px-3 py-1.5 text-slate-700">
+                  <FiServer className="text-sm" />
+                  Traffic Violation Dashboard
+                </span>
+                <span className="inline-flex items-center gap-2 rounded-full bg-mist px-3 py-1.5 text-slate-700">
+                  <FiDatabase className="text-sm" />
+                  Live records
+                </span>
+              </div>
+              <div>
+                <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+                  Traffic violation monitoring
+                </h1>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+                  Review violation stats, check vehicles, and manage records from one place.
+                </p>
+              </div>
             </div>
-            <div className="flex flex-wrap gap-3 text-sm text-slate-200">
-              <InfoPill icon={FiTruck} label="Vehicle checks" />
-              <InfoPill icon={FiFilter} label="Filter & analytics" />
-              <InfoPill icon={FiDatabase} label="Persistent cloud DB" />
-            </div>
-          </div>
 
-          <motion.div
-            className="glass-panel relative isolate overflow-hidden p-6"
-            initial={{ opacity: 0, y: 22 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45 }}
-          >
-            <div className="absolute inset-x-0 top-0 h-px bg-white/20" />
-            <div className="grid gap-4 sm:grid-cols-[auto_1fr] sm:items-center">
-              <div className="relative flex h-24 w-24 items-center justify-center">
-                <span className={`absolute h-20 w-20 rounded-full bg-gradient-to-br ${statusTheme.color} opacity-35 blur-xl`} />
-                <span className={`absolute h-16 w-16 rounded-full border border-white/15 ${status.mode !== "sleeping" ? "animate-radar" : ""}`} />
-                <span className={`absolute h-12 w-12 rounded-full bg-gradient-to-br ${statusTheme.color} ${status.mode === "sleeping" ? "animate-pulseSlow" : ""}`} />
-                <StatusIcon className="relative z-10 text-2xl text-white" />
-              </div>
-              <div className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-200">Render server state</p>
-                <h2 className="text-2xl font-semibold">{statusTheme.label}</h2>
-                <p className="text-sm leading-6 text-slate-200">{status.note || statusTheme.description}</p>
-                <p className="break-all text-xs text-slate-300">{API_BASE_URL}</p>
-              </div>
-            </div>
-            <div className="mt-6 grid gap-3 rounded-lg border border-white/10 bg-white/5 p-4 text-sm text-slate-200">
-              <div className="flex items-start gap-3">
-                <span className="mt-1 h-2.5 w-2.5 rounded-full bg-emerald-300" />
-                <div>
-                  <strong className="block text-white">Live</strong>
-                  <span>Requests are flowing and metrics should refresh instantly.</span>
+            <motion.div
+              className="panel w-full max-w-xl p-4 sm:p-5"
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35 }}
+            >
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-mist">
+                  <span className={`flex h-9 w-9 items-center justify-center rounded-full text-white ${statusTheme.color}`}>
+                    <StatusIcon className="text-lg" />
+                  </span>
+                </div>
+                <div className="min-w-0 space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Backend status</p>
+                  <h2 className="text-lg font-semibold text-ink">{statusTheme.label}</h2>
+                  <p className="text-sm leading-6 text-slate-600">{status.note || statusTheme.description}</p>
+                  <p className="break-all text-xs text-slate-500">{API_BASE_URL}</p>
                 </div>
               </div>
-              <div className="flex items-start gap-3">
-                <span className="mt-1 h-2.5 w-2.5 rounded-full bg-amber-300" />
-                <div>
-                  <strong className="block text-white">Waking</strong>
-                  <span>First load can take longer while Render spins the free instance back up.</span>
-                </div>
+              <div className="mt-4 grid gap-2 text-sm text-slate-600 sm:grid-cols-3">
+                <StatusHint tone="bg-emerald-500" title="Live" text="Requests are succeeding." />
+                <StatusHint tone="bg-amber-500" title="Waking" text="First load can take longer." />
+                <StatusHint tone="bg-slate-500" title="Retrying" text="The dashboard keeps checking." />
               </div>
-              <div className="flex items-start gap-3">
-                <span className="mt-1 h-2.5 w-2.5 rounded-full bg-slate-300" />
-                <div>
-                  <strong className="block text-white">Sleeping</strong>
-                  <span>Dashboard keeps checking health so visitors can see what’s happening.</span>
-                </div>
-              </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-7xl gap-5 px-4 py-6 md:px-8">
-        <section className="grid gap-5 xl:grid-cols-[1.45fr_0.85fr]">
-          <div className="grid gap-4 md:grid-cols-3">
-            <MetricCard icon={FiAlertTriangle} label="Total Violations" value={stats.totalViolations} footnote="Recorded cases across the current database" />
-            <MetricCard icon={FiTrendingUp} label="Total Fine Collected" value={formatCurrency(stats.totalFineCollected)} footnote="Aggregated penalty amount" />
-            <MetricCard icon={FiMapPin} label="Most Active Zone" value={topZone} footnote="Zone with the highest violation count" />
+      <main className="mx-auto grid max-w-7xl gap-5 px-4 py-5 sm:px-6 lg:px-8">
+        <section className="grid gap-5 lg:grid-cols-[1.55fr_0.95fr]">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <MetricCard icon={FiAlertTriangle} label="Total violations" value={stats.totalViolations} footnote="Recorded cases in the current database" />
+            <MetricCard icon={FiTrendingUp} label="Total fine collected" value={formatCurrency(stats.totalFineCollected)} footnote="Total amount across stored violations" />
+            <MetricCard icon={FiMapPin} label="Most active zone" value={topZone} footnote="Zone with the highest number of violations" />
           </div>
 
           <div className="panel p-5">
-            <SectionHeader eyebrow="Analytics" title="Violations per zone" />
+            <SectionHeader eyebrow="Analytics" title="Violations by zone" />
             <div className="mt-4 grid gap-3">
               {zoneEntries.length ? (
                 zoneEntries.map(([zone, count]) => (
                   <motion.div
                     key={zone}
                     layout
-                    className="flex items-center justify-between rounded-lg border border-line bg-mist px-4 py-3"
+                    className="flex items-center justify-between gap-3 rounded-lg border border-line bg-mist px-4 py-3"
                   >
-                    <span className="font-medium">{zone}</span>
-                    <span className="rounded-full bg-white px-3 py-1 text-sm font-semibold text-slate-700">{count}</span>
+                    <span className="min-w-0 break-words font-medium text-ink">{zone}</span>
+                    <span className="shrink-0 rounded-full bg-white px-3 py-1 text-sm font-semibold text-slate-700">{count}</span>
                   </motion.div>
                 ))
               ) : (
@@ -461,18 +440,18 @@ function App() {
           </div>
         </section>
 
-        <section className="grid gap-5 xl:grid-cols-[1.55fr_0.8fr]">
+        <section className="grid gap-5 lg:grid-cols-[1.55fr_0.85fr]">
           <motion.div
             className="panel p-5"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35 }}
           >
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <SectionHeader eyebrow="Detection" title={editingRecordId !== null ? "Edit violation record" : "Check vehicle for violation"} />
-              <button className="button-secondary gap-2" type="button" onClick={loadDashboard}>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <SectionHeader eyebrow="Detection" title={editingRecordId !== null ? "Edit violation record" : "Check vehicle"} />
+              <button className="button-secondary w-full gap-2 sm:w-auto" type="button" onClick={loadDashboard}>
                 <FiRefreshCcw />
-                Refresh Data
+                Refresh data
               </button>
             </div>
 
@@ -509,26 +488,26 @@ function App() {
                 </Field>
                 <Field label="Emergency vehicle">
                   <button
-                    className="flex h-11 items-center gap-3 rounded-lg border border-line bg-white px-3 text-sm font-medium text-ink"
+                    className="flex h-11 w-full items-center justify-between gap-3 rounded-lg border border-line bg-white px-3 text-sm font-medium text-ink"
                     type="button"
                     onClick={() => handleFormChange("isEmergency", !form.isEmergency)}
                   >
+                    <span>{form.isEmergency ? "Enabled" : "Disabled"}</span>
                     <span className={`relative h-6 w-11 rounded-full transition ${form.isEmergency ? "bg-teal-600" : "bg-slate-300"}`}>
                       <span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition ${form.isEmergency ? "left-6" : "left-1"}`} />
                     </span>
-                    {form.isEmergency ? "Enabled" : "Disabled"}
                   </button>
                 </Field>
               </div>
 
-              <div className="flex flex-wrap gap-3">
-                <button className="button-primary gap-2" type="submit">
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                <button className="button-primary w-full gap-2 sm:w-auto" type="submit">
                   <FiZap />
-                  {editingRecordId !== null ? "Update Violation" : "Check & Save Violation"}
+                  {editingRecordId !== null ? "Update violation" : "Check and save"}
                 </button>
                 {editingRecordId !== null && (
-                  <button className="button-secondary" type="button" onClick={resetForm}>
-                    Cancel Edit
+                  <button className="button-secondary w-full sm:w-auto" type="button" onClick={resetForm}>
+                    Cancel edit
                   </button>
                 )}
               </div>
@@ -554,28 +533,28 @@ function App() {
             </AnimatePresence>
           </motion.div>
 
-          <div className="panel overflow-hidden bg-[linear-gradient(180deg,#0B1520_0%,#13283B_100%)] p-5 text-white">
-            <SectionHeader eyebrow="Rules & behavior" title="Fine engine" dark />
-            <div className="mt-5 space-y-3 text-sm text-slate-200">
+          <div className="panel p-5">
+            <SectionHeader eyebrow="Rules" title="Fine engine" />
+            <div className="mt-5 space-y-3 text-sm text-slate-700">
               <RuleRow speed="81 - 100 km/h" fine="Rs. 1000" />
               <RuleRow speed="101 - 120 km/h" fine="Rs. 2000" />
               <RuleRow speed="Above 120 km/h" fine="Rs. 5000" />
             </div>
-            <div className="mt-5 rounded-lg border border-white/10 bg-white/5 p-4 text-sm leading-6 text-slate-200">
-              Emergency vehicles stay exempt even when they cross the normal speed threshold. The dashboard uses health polling to make Render sleep behavior visible to users.
+            <div className="mt-5 rounded-lg border border-line bg-mist p-4 text-sm leading-6 text-slate-600">
+              Emergency vehicles are exempt. If the hosted API is asleep, the dashboard keeps retrying in the background.
             </div>
           </div>
         </section>
 
         <section className="panel p-5">
-          <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <SectionHeader eyebrow="Records" title="Violation registry" />
             <div className="text-sm text-slate-500">
               Showing {recordsPage.numberOfElements || 0} of {recordsPage.totalElements || 0} records
             </div>
           </div>
 
-          <form className="mt-5 grid gap-4 xl:grid-cols-[repeat(6,minmax(0,1fr))_auto]" onSubmit={applyFilters}>
+          <form className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-[repeat(6,minmax(0,1fr))_auto]" onSubmit={applyFilters}>
             <Field label="Zone">
               <input
                 className="input-surface"
@@ -626,21 +605,60 @@ function App() {
                 <option value="20">20</option>
               </select>
             </Field>
-            <div className="flex flex-wrap items-end gap-3">
-              <button className="button-primary gap-2" type="submit">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end xl:items-end">
+              <button className="button-primary w-full gap-2 sm:w-auto" type="submit">
                 <FiFilter />
                 Apply
               </button>
-              <button className="button-secondary" type="button" onClick={clearFilters}>
+              <button className="button-secondary w-full sm:w-auto" type="button" onClick={clearFilters}>
                 Reset
               </button>
             </div>
           </form>
 
-          <div className="mt-5 overflow-hidden rounded-lg border border-line">
+          <div className="mt-5 grid gap-3 md:hidden">
+            {recordsPage.content.length ? (
+              recordsPage.content.map((record) => (
+                <article key={record.id} className="rounded-lg border border-line bg-white p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Record</p>
+                      <h3 className="mt-1 text-lg font-semibold text-ink">#{record.id}</h3>
+                    </div>
+                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${record.isEmergency ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                      {record.isEmergency ? "Emergency" : "Standard"}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <MobileData label="Vehicle" value={record.vehicleId} />
+                    <MobileData label="Speed" value={`${record.speed} km/h`} />
+                    <MobileData label="Zone" value={record.zone} />
+                    <MobileData label="Fine" value={formatCurrency(record.fine)} />
+                    <MobileData label="Created" value={formatDate(record.createdAt)} full />
+                  </div>
+
+                  <div className="mt-4 flex gap-2">
+                    <button className="button-secondary flex-1 gap-2" type="button" onClick={() => handleEdit(record.id)}>
+                      <FiEdit3 />
+                      Edit
+                    </button>
+                    <button className="button-secondary flex-1 gap-2 text-rose-600" type="button" onClick={() => handleDelete(record.id)}>
+                      <FiTrash2 />
+                      Delete
+                    </button>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <EmptyInline text="No records match the current view." />
+            )}
+          </div>
+
+          <div className="mt-5 hidden overflow-hidden rounded-lg border border-line md:block">
             <div className="overflow-x-auto">
               <table className="min-w-[980px] w-full border-collapse">
-                <thead className="bg-mist text-left text-xs uppercase tracking-[0.18em] text-slate-500">
+                <thead className="bg-mist text-left text-xs uppercase tracking-[0.16em] text-slate-500">
                   <tr>
                     {["ID", "Vehicle", "Speed", "Zone", "Fine", "Emergency", "Created", "Actions"].map((heading) => (
                       <th key={heading} className="border-b border-line px-4 py-3 font-semibold">
@@ -663,7 +681,7 @@ function App() {
                             {record.isEmergency ? "Emergency" : "Standard"}
                           </span>
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap">{formatDate(record.createdAt)}</td>
+                        <td className="whitespace-nowrap px-4 py-4">{formatDate(record.createdAt)}</td>
                         <td className="px-4 py-4">
                           <div className="flex gap-2">
                             <button className="button-secondary h-9 px-3" type="button" onClick={() => handleEdit(record.id)}>
@@ -688,13 +706,13 @@ function App() {
             </div>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-sm text-slate-500">{tableMessage}</div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between gap-3 sm:justify-end">
               <button className="button-secondary h-10 px-3" type="button" disabled={recordsPage.first} onClick={() => setPage((current) => Math.max(0, current - 1))}>
                 <FiChevronLeft />
               </button>
-              <span className="text-sm font-medium text-slate-600">
+              <span className="text-center text-sm font-medium text-slate-600">
                 Page {(recordsPage.number || 0) + 1} of {Math.max(recordsPage.totalPages || 1, 1)}
               </span>
               <button className="button-secondary h-10 px-3" type="button" disabled={recordsPage.last} onClick={() => setPage((current) => current + 1)}>
@@ -708,11 +726,11 @@ function App() {
   );
 }
 
-function SectionHeader({ eyebrow, title, dark = false }) {
+function SectionHeader({ eyebrow, title }) {
   return (
     <div className="space-y-1">
-      <p className={`text-xs font-semibold uppercase tracking-[0.2em] ${dark ? "text-teal-200" : "text-teal-700"}`}>{eyebrow}</p>
-      <h2 className={`text-2xl font-semibold ${dark ? "text-white" : "text-ink"}`}>{title}</h2>
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-700">{eyebrow}</p>
+      <h2 className="text-xl font-semibold text-ink sm:text-2xl">{title}</h2>
     </div>
   );
 }
@@ -726,9 +744,9 @@ function MetricCard({ icon: Icon, label, value, footnote }) {
       transition={{ duration: 0.35 }}
     >
       <div className="flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <span className="text-sm font-medium text-slate-500">{label}</span>
-          <div className="mt-3 text-3xl font-semibold text-ink">{value}</div>
+          <div className="mt-3 break-words text-2xl font-semibold text-ink sm:text-3xl">{value}</div>
         </div>
         <div className="rounded-2xl bg-teal-50 p-3 text-teal-700">
           <Icon className="text-xl" />
@@ -750,24 +768,36 @@ function Field({ label, children }) {
 
 function RuleRow({ speed, fine }) {
   return (
-    <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-4 py-3">
-      <span className="text-slate-200">{speed}</span>
-      <span className="font-semibold text-white">{fine}</span>
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-line bg-mist px-4 py-3">
+      <span className="text-slate-700">{speed}</span>
+      <span className="shrink-0 font-semibold text-ink">{fine}</span>
     </div>
-  );
-}
-
-function InfoPill({ icon: Icon, label }) {
-  return (
-    <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-sm">
-      <Icon />
-      {label}
-    </span>
   );
 }
 
 function EmptyInline({ text }) {
   return <p className="rounded-lg border border-dashed border-line bg-mist px-4 py-5 text-sm text-slate-500">{text}</p>;
+}
+
+function StatusHint({ tone, title, text }) {
+  return (
+    <div className="rounded-lg border border-line bg-mist px-3 py-3">
+      <div className="flex items-center gap-2">
+        <span className={`h-2.5 w-2.5 rounded-full ${tone}`} />
+        <span className="text-sm font-semibold text-ink">{title}</span>
+      </div>
+      <p className="mt-1 text-xs leading-5 text-slate-500">{text}</p>
+    </div>
+  );
+}
+
+function MobileData({ label, value, full = false }) {
+  return (
+    <div className={full ? "sm:col-span-2" : ""}>
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{label}</p>
+      <p className="mt-1 text-sm text-ink">{value}</p>
+    </div>
+  );
 }
 
 function formatCurrency(value) {
