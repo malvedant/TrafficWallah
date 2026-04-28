@@ -6,13 +6,15 @@
   html {
     font-family: Inter, "Segoe UI", system-ui, sans-serif;
     color: #09131f;
-    background: #eef3f8;
+    background: #dbe3ec;
   }
 
   body {
     margin: 0;
     min-height: 100vh;
-    background: #eef3f8;
+    background:
+      radial-gradient(circle at top, rgba(255, 255, 255, 0.58), transparent 28%),
+      linear-gradient(180deg, #d9e2ec 0%, #c7d3df 100%);
   }
 
   * {
@@ -26,11 +28,15 @@
   }
 
   .panel {
-    @apply rounded-lg border border-line bg-white shadow-panel;
+    @apply rounded-lg border border-white/50 bg-white/90 shadow-panel backdrop-blur-sm;
+  }
+
+  .panel-soft {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(241, 246, 251, 0.92) 100%);
   }
 
   .input-surface {
-    @apply h-11 w-full rounded-lg border border-line bg-white px-3 text-sm text-ink outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100;
+    @apply h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-ink outline-none transition focus:border-teal-600 focus:ring-4 focus:ring-teal-100;
   }
 
   .button-primary {
@@ -38,7 +44,7 @@
   }
 
   .button-secondary {
-    @apply inline-flex h-11 items-center justify-center rounded-lg border border-line bg-white px-4 text-sm font-semibold text-ink transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-slate-100;
+    @apply inline-flex h-11 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-ink transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-slate-100;
   }
 
   .button-primary:disabled,

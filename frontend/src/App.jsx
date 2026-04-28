@@ -358,50 +358,57 @@ function App() {
 
   return (
     <div className="min-h-screen bg-shell text-ink">
-      <header className="border-b border-line bg-white">
+      <header className="border-b border-white/10 bg-[linear-gradient(135deg,#0f1724_0%,#142438_52%,#18304a_100%)] text-white shadow-[0_24px_60px_rgba(6,12,22,0.22)]">
         <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-3xl space-y-3">
-              <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-slate-600">
-                <span className="inline-flex items-center gap-2 rounded-full bg-mist px-3 py-1.5 text-slate-700">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex h-14 w-14 items-center justify-center rounded-lg border border-white/12 bg-white/10 p-2 shadow-[0_12px_30px_rgba(7,14,24,0.28)] backdrop-blur">
+                  <img
+                    src="/logo.png"
+                    alt="Indian Traffic Police"
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-sm font-medium text-slate-100 backdrop-blur">
                   <FiServer className="text-sm" />
                   Traffic Violation Dashboard
                 </span>
-                <span className="inline-flex items-center gap-2 rounded-full bg-mist px-3 py-1.5 text-slate-700">
+                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-sm font-medium text-slate-100 backdrop-blur">
                   <FiDatabase className="text-sm" />
                   Live records
                 </span>
               </div>
               <div>
-                <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+                <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
                   Traffic violation monitoring
                 </h1>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
-                  Review violation stats, check vehicles, and manage records from one place.
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-200 sm:text-base">
+                  Review violation stats, check vehicles, and manage records from one focused dashboard.
                 </p>
               </div>
             </div>
 
             <motion.div
-              className="panel w-full max-w-xl p-4 sm:p-5"
+              className="w-full max-w-xl rounded-lg border border-white/12 bg-white/10 p-4 shadow-[0_18px_50px_rgba(6,12,22,0.24)] backdrop-blur-md sm:p-5"
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35 }}
             >
               <div className="flex items-start gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-mist">
-                  <span className={`flex h-9 w-9 items-center justify-center rounded-full text-white ${statusTheme.color}`}>
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/10">
+                  <span className={`flex h-9 w-9 items-center justify-center rounded-full text-white shadow-inner ${statusTheme.color}`}>
                     <StatusIcon className="text-lg" />
                   </span>
                 </div>
                 <div className="min-w-0 space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Backend status</p>
-                  <h2 className="text-lg font-semibold text-ink">{statusTheme.label}</h2>
-                  <p className="text-sm leading-6 text-slate-600">{status.note || statusTheme.description}</p>
-                  <p className="break-all text-xs text-slate-500">{API_BASE_URL}</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Backend status</p>
+                  <h2 className="text-lg font-semibold text-white">{statusTheme.label}</h2>
+                  <p className="text-sm leading-6 text-slate-200">{status.note || statusTheme.description}</p>
+                  <p className="break-all text-xs text-slate-300">{API_BASE_URL}</p>
                 </div>
               </div>
-              <div className="mt-4 grid gap-2 text-sm text-slate-600 sm:grid-cols-3">
+              <div className="mt-4 grid gap-2 sm:grid-cols-3">
                 <StatusHint tone="bg-emerald-500" title="Live" text="Requests are succeeding." />
                 <StatusHint tone="bg-amber-500" title="Waking" text="First load can take longer." />
                 <StatusHint tone="bg-slate-500" title="Retrying" text="The dashboard keeps checking." />
@@ -419,7 +426,7 @@ function App() {
             <MetricCard icon={FiMapPin} label="Most active zone" value={topZone} footnote="Zone with the highest number of violations" />
           </div>
 
-          <div className="panel p-5">
+          <div className="panel panel-soft p-5">
             <SectionHeader eyebrow="Analytics" title="Violations by zone" />
             <div className="mt-4 grid gap-3">
               {zoneEntries.length ? (
@@ -427,10 +434,10 @@ function App() {
                   <motion.div
                     key={zone}
                     layout
-                    className="flex items-center justify-between gap-3 rounded-lg border border-line bg-mist px-4 py-3"
+                    className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/10 px-4 py-3"
                   >
                     <span className="min-w-0 break-words font-medium text-ink">{zone}</span>
-                    <span className="shrink-0 rounded-full bg-white px-3 py-1 text-sm font-semibold text-slate-700">{count}</span>
+                    <span className="shrink-0 rounded-full bg-white/90 px-3 py-1 text-sm font-semibold text-slate-700">{count}</span>
                   </motion.div>
                 ))
               ) : (
@@ -442,7 +449,7 @@ function App() {
 
         <section className="grid gap-5 lg:grid-cols-[1.55fr_0.85fr]">
           <motion.div
-            className="panel p-5"
+            className="panel panel-soft p-5"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35 }}
@@ -533,20 +540,20 @@ function App() {
             </AnimatePresence>
           </motion.div>
 
-          <div className="panel p-5">
+          <div className="panel panel-soft p-5">
             <SectionHeader eyebrow="Rules" title="Fine engine" />
             <div className="mt-5 space-y-3 text-sm text-slate-700">
               <RuleRow speed="81 - 100 km/h" fine="Rs. 1000" />
               <RuleRow speed="101 - 120 km/h" fine="Rs. 2000" />
               <RuleRow speed="Above 120 km/h" fine="Rs. 5000" />
             </div>
-            <div className="mt-5 rounded-lg border border-line bg-mist p-4 text-sm leading-6 text-slate-600">
+            <div className="mt-5 rounded-lg border border-white/10 bg-white/10 p-4 text-sm leading-6 text-slate-600">
               Emergency vehicles are exempt. If the hosted API is asleep, the dashboard keeps retrying in the background.
             </div>
           </div>
         </section>
 
-        <section className="panel p-5">
+        <section className="panel panel-soft p-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <SectionHeader eyebrow="Records" title="Violation registry" />
             <div className="text-sm text-slate-500">
@@ -619,7 +626,7 @@ function App() {
           <div className="mt-5 grid gap-3 md:hidden">
             {recordsPage.content.length ? (
               recordsPage.content.map((record) => (
-                <article key={record.id} className="rounded-lg border border-line bg-white p-4">
+                <article key={record.id} className="rounded-lg border border-white/10 bg-white/90 p-4 shadow-[0_10px_24px_rgba(15,23,36,0.08)]">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Record</p>
@@ -658,7 +665,7 @@ function App() {
           <div className="mt-5 hidden overflow-hidden rounded-lg border border-line md:block">
             <div className="overflow-x-auto">
               <table className="min-w-[980px] w-full border-collapse">
-                <thead className="bg-mist text-left text-xs uppercase tracking-[0.16em] text-slate-500">
+                <thead className="bg-slate-100/90 text-left text-xs uppercase tracking-[0.16em] text-slate-500">
                   <tr>
                     {["ID", "Vehicle", "Speed", "Zone", "Fine", "Emergency", "Created", "Actions"].map((heading) => (
                       <th key={heading} className="border-b border-line px-4 py-3 font-semibold">
@@ -738,7 +745,7 @@ function SectionHeader({ eyebrow, title }) {
 function MetricCard({ icon: Icon, label, value, footnote }) {
   return (
     <motion.article
-      className="panel flex min-h-[168px] flex-col justify-between p-5"
+      className="panel panel-soft flex min-h-[168px] flex-col justify-between p-5"
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35 }}
@@ -748,7 +755,7 @@ function MetricCard({ icon: Icon, label, value, footnote }) {
           <span className="text-sm font-medium text-slate-500">{label}</span>
           <div className="mt-3 break-words text-2xl font-semibold text-ink sm:text-3xl">{value}</div>
         </div>
-        <div className="rounded-2xl bg-teal-50 p-3 text-teal-700">
+        <div className="rounded-2xl bg-slate-900/5 p-3 text-teal-700">
           <Icon className="text-xl" />
         </div>
       </div>
@@ -776,17 +783,17 @@ function RuleRow({ speed, fine }) {
 }
 
 function EmptyInline({ text }) {
-  return <p className="rounded-lg border border-dashed border-line bg-mist px-4 py-5 text-sm text-slate-500">{text}</p>;
+  return <p className="rounded-lg border border-dashed border-line bg-white/60 px-4 py-5 text-sm text-slate-500">{text}</p>;
 }
 
 function StatusHint({ tone, title, text }) {
   return (
-    <div className="rounded-lg border border-line bg-mist px-3 py-3">
+    <div className="rounded-lg border border-white/10 bg-white/10 px-3 py-3 text-slate-100">
       <div className="flex items-center gap-2">
         <span className={`h-2.5 w-2.5 rounded-full ${tone}`} />
-        <span className="text-sm font-semibold text-ink">{title}</span>
+        <span className="text-sm font-semibold text-white">{title}</span>
       </div>
-      <p className="mt-1 text-xs leading-5 text-slate-500">{text}</p>
+      <p className="mt-1 text-xs leading-5 text-slate-300">{text}</p>
     </div>
   );
 }
