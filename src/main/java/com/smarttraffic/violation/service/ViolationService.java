@@ -5,6 +5,7 @@ import com.smarttraffic.violation.dto.TrafficCheckRequest;
 import com.smarttraffic.violation.dto.TrafficCheckResponse;
 import com.smarttraffic.violation.dto.ViolationResponse;
 import com.smarttraffic.violation.dto.ViolationUpdateRequest;
+import com.smarttraffic.violation.dto.RecordStatus;
 import org.springframework.data.domain.Page;
 
 public interface ViolationService {
@@ -19,7 +20,7 @@ public interface ViolationService {
 
     void deleteViolation(Long id);
 
-    Page<ViolationResponse> filterViolations(String zone, Integer minSpeed, Integer maxSpeed, int page, int size,
+    Page<ViolationResponse> filterViolations(String zone, Integer minSpeed, Integer maxSpeed, RecordStatus status, int page, int size,
                                              String sortBy, String order);
 
     StatsResponse getViolationStats();

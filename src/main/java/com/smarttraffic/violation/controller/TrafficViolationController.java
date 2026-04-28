@@ -5,6 +5,7 @@ import com.smarttraffic.violation.dto.TrafficCheckRequest;
 import com.smarttraffic.violation.dto.TrafficCheckResponse;
 import com.smarttraffic.violation.dto.ViolationResponse;
 import com.smarttraffic.violation.dto.ViolationUpdateRequest;
+import com.smarttraffic.violation.dto.RecordStatus;
 import com.smarttraffic.violation.service.ViolationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -66,12 +67,13 @@ public class TrafficViolationController {
             @RequestParam(required = false) String zone,
             @RequestParam(required = false) Integer minSpeed,
             @RequestParam(required = false) Integer maxSpeed,
+            @RequestParam(required = false) RecordStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "5") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String order) {
         return ResponseEntity.ok(
-                violationService.filterViolations(zone, minSpeed, maxSpeed, page, size, sortBy, order)
+                violationService.filterViolations(zone, minSpeed, maxSpeed, status, page, size, sortBy, order)
         );
     }
 

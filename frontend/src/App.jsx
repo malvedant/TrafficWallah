@@ -32,6 +32,7 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "https://trafficsprin
 
 const defaultFilters = {
   zone: "",
+  status: "",
   minSpeed: "",
   maxSpeed: ""
 };
@@ -99,6 +100,7 @@ function App() {
   const [feedback, setFeedback] = useState(null);
   const [tableMessage, setTableMessage] = useState("");
   const [pendingDeleteRecord, setPendingDeleteRecord] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDashboardLoading, setIsDashboardLoading] = useState(true);
   const [isRecordsLoading, setIsRecordsLoading] = useState(true);
   const pollRef = useRef(null);
@@ -186,6 +188,7 @@ function App() {
     });
 
     if (filters.zone) query.set("zone", filters.zone);
+    if (filters.status) query.set("status", filters.status);
     if (filters.minSpeed) query.set("minSpeed", filters.minSpeed);
     if (filters.maxSpeed) query.set("maxSpeed", filters.maxSpeed);
 
@@ -257,7 +260,7 @@ function App() {
   }
 
   function hasActiveFilters() {
-    return Boolean(filters.zone || filters.minSpeed || filters.maxSpeed);
+    return Boolean(filters.zone || filters.status || filters.minSpeed || filters.maxSpeed);
   }
 
   function handleFormChange(field, value) {
@@ -285,6 +288,12 @@ function App() {
     }
 
     try {
+      setIsSubmitting(true);
+      setFeedback({
+        type: "warning",
+        text: editingRecordId !== null ? "Updating record. Please wait..." : "Saving traffic check. Please wait..."
+      });
+
       if (editingRecordId !== null) {
         const updated = await apiFetch(`/traffic/${editingRecordId}`, {
           method: "PUT",
@@ -312,6 +321,8 @@ function App() {
       await loadDashboard();
     } catch (error) {
       setFeedback({ type: "error", text: error.message || "Unable to save record." });
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -505,6 +516,7 @@ function App() {
                     value={form.vehicleId}
                     onChange={(event) => handleFormChange("vehicleId", event.target.value)}
                     placeholder="MH12AB1234"
+                    disabled={isSubmitting}
                     required
                   />
                 </Field>
@@ -516,6 +528,7 @@ function App() {
                     value={form.speed}
                     onChange={(event) => handleFormChange("speed", event.target.value)}
                     placeholder="110"
+                    disabled={isSubmitting}
                     required
                   />
                 </Field>
@@ -525,6 +538,7 @@ function App() {
                     value={form.zone}
                     onChange={(event) => handleFormChange("zone", event.target.value)}
                     placeholder="Pune"
+                    disabled={isSubmitting}
                     required
                   />
                 </Field>
@@ -532,6 +546,7 @@ function App() {
                   <button
                     className="flex h-11 w-full items-center justify-between gap-3 rounded-lg border border-line bg-white px-3 text-sm font-medium text-ink"
                     type="button"
+                    disabled={isSubmitting}
                     onClick={() => handleFormChange("isEmergency", !form.isEmergency)}
                   >
                     <span>{form.isEmergency ? "Enabled" : "Disabled"}</span>
@@ -543,12 +558,18 @@ function App() {
               </div>
 
               <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                <button className="button-primary w-full gap-2 sm:w-auto" type="submit">
+                <button className="button-primary w-full gap-2 sm:w-auto" type="submit" disabled={isSubmitting}>
                   <FiZap />
-                  {editingRecordId !== null ? "Update violation" : "Check and save"}
+                  {isSubmitting
+                    ? editingRecordId !== null
+                      ? "Updating..."
+                      : "Saving..."
+                    : editingRecordId !== null
+                      ? "Update violation"
+                      : "Check and save"}
                 </button>
                 {editingRecordId !== null && (
-                  <button className="button-secondary w-full sm:w-auto" type="button" onClick={resetForm}>
+                  <button className="button-secondary w-full sm:w-auto" type="button" onClick={resetForm} disabled={isSubmitting}>
                     Cancel edit
                   </button>
                 )}
@@ -596,7 +617,7 @@ function App() {
             </div>
           </div>
 
-          <form className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-[repeat(6,minmax(0,1fr))_auto]" onSubmit={applyFilters}>
+          <form className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-[repeat(7,minmax(0,1fr))_auto]" onSubmit={applyFilters}>
             <Field label="Zone">
               <input
                 className="input-surface"
@@ -604,6 +625,18 @@ function App() {
                 onChange={(event) => setFilters((current) => ({ ...current, zone: event.target.value }))}
                 placeholder="Pune"
               />
+            </Field>
+            <Field label="Status">
+              <select
+                className="input-surface"
+                value={filters.status}
+                onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))}
+              >
+                <option value="">All records</option>
+                <option value="VIOLATION">Violation</option>
+                <option value="EMERGENCY_EXEMPT">Emergency exempt</option>
+                <option value="WITHIN_LIMIT">Within limit</option>
+              </select>
             </Field>
             <Field label="Min Speed">
               <input
@@ -935,25 +968,25 @@ function ZoneChart({ entries }) {
   const barColors = ["#0f766e", "#14b8a6", "#22c55e", "#38bdf8", "#f59e0b", "#fb7185"];
 
   return (
-    <div className="rounded-xl border border-line bg-[linear-gradient(180deg,#f8fbfd_0%,#eef4f8_100%)] p-4 text-ink shadow-[0_18px_40px_rgba(15,23,36,0.08)]">
+    <div className="rounded-xl border border-slate-800/40 bg-[linear-gradient(180deg,#162235_0%,#1b2c43_100%)] p-4 text-white shadow-[0_18px_40px_rgba(15,23,36,0.18)]">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Zone chart</p>
-          <h3 className="mt-1 text-lg font-semibold text-ink">Violations by zone</h3>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-300">Zone chart</p>
+          <h3 className="mt-1 text-lg font-semibold text-white">Violations by zone</h3>
         </div>
-        <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
+        <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-medium text-slate-200">
           Top {chartEntries.length} zones
         </span>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-line bg-white p-3">
+      <div className="overflow-hidden rounded-lg border border-white/10 bg-white/5 p-3">
         <div className="h-[280px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartEntries} margin={{ top: 12, right: 8, left: -18, bottom: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#d9e2ec" vertical={false} />
-              <XAxis dataKey="shortZone" tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
-              <YAxis allowDecimals={false} tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
-              <Tooltip cursor={{ fill: "rgba(15, 23, 42, 0.04)" }} content={<ZoneChartTooltip />} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(226,232,240,0.16)" vertical={false} />
+              <XAxis dataKey="shortZone" tick={{ fill: "#cbd5e1", fontSize: 12 }} axisLine={false} tickLine={false} />
+              <YAxis allowDecimals={false} tick={{ fill: "#cbd5e1", fontSize: 12 }} axisLine={false} tickLine={false} />
+              <Tooltip cursor={{ fill: "rgba(255, 255, 255, 0.04)" }} content={<ZoneChartTooltip />} />
               <Bar dataKey="count" radius={[10, 10, 0, 0]} maxBarSize={56}>
                 {chartEntries.map((entry, index) => (
                   <Cell key={entry.zone} fill={barColors[index % barColors.length]} />
@@ -966,15 +999,15 @@ function ZoneChart({ entries }) {
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         {chartEntries.map((entry, index) => (
-          <div key={entry.zone} className="rounded-lg border border-line bg-white px-3 py-3">
+          <div key={entry.zone} className="rounded-lg border border-white/10 bg-white/10 px-3 py-3">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-ink" title={entry.zone}>{entry.zone}</p>
-                <p className="mt-1 text-xs text-slate-500">Chargeable violations</p>
+                <p className="truncate text-sm font-semibold text-white" title={entry.zone}>{entry.zone}</p>
+                <p className="mt-1 text-xs text-slate-300">Chargeable violations</p>
               </div>
               <div className="flex items-center gap-2">
                 <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: barColors[index % barColors.length] }} />
-                <span className="text-sm font-semibold text-slate-700">{entry.count}</span>
+                <span className="text-sm font-semibold text-white">{entry.count}</span>
               </div>
             </div>
           </div>
@@ -1001,9 +1034,9 @@ function ZoneChartTooltip({ active, payload }) {
   }
 
   return (
-    <div className="rounded-lg border border-line bg-white px-3 py-2 shadow-lg">
-      <p className="text-sm font-semibold text-ink">{item.zone}</p>
-      <p className="mt-1 text-xs text-slate-600">{item.count} chargeable violation{item.count === 1 ? "" : "s"}</p>
+    <div className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 shadow-lg">
+      <p className="text-sm font-semibold text-white">{item.zone}</p>
+      <p className="mt-1 text-xs text-slate-300">{item.count} chargeable violation{item.count === 1 ? "" : "s"}</p>
     </div>
   );
 }

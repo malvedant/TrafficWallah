@@ -5,6 +5,7 @@ import com.smarttraffic.violation.dto.TrafficCheckRequest;
 import com.smarttraffic.violation.dto.TrafficCheckResponse;
 import com.smarttraffic.violation.dto.ViolationResponse;
 import com.smarttraffic.violation.dto.ViolationUpdateRequest;
+import com.smarttraffic.violation.dto.RecordStatus;
 import com.smarttraffic.violation.entity.Violation;
 import com.smarttraffic.violation.exception.InvalidRequestException;
 import com.smarttraffic.violation.exception.ResourceNotFoundException;
@@ -96,7 +97,7 @@ public class ViolationServiceImpl implements ViolationService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ViolationResponse> filterViolations(String zone, Integer minSpeed, Integer maxSpeed, int page, int size,
+    public Page<ViolationResponse> filterViolations(String zone, Integer minSpeed, Integer maxSpeed, RecordStatus status, int page, int size,
                                                     String sortBy, String order) {
         if (minSpeed != null && maxSpeed != null && minSpeed > maxSpeed) {
             throw new InvalidRequestException("minSpeed cannot be greater than maxSpeed");
@@ -105,7 +106,8 @@ public class ViolationServiceImpl implements ViolationService {
         Specification<Violation> specification = Specification
                 .where(ViolationSpecifications.hasZone(zone))
                 .and(ViolationSpecifications.speedGreaterThanOrEqual(minSpeed))
-                .and(ViolationSpecifications.speedLessThanOrEqual(maxSpeed));
+                .and(ViolationSpecifications.speedLessThanOrEqual(maxSpeed))
+                .and(ViolationSpecifications.hasStatus(status));
 
         Pageable pageable = buildPageable(page, size, sortBy, order);
         return violationRepository.findAll(specification, pageable).map(this::mapToResponse);

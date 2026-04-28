@@ -1,5 +1,6 @@
 package com.smarttraffic.violation.repository;
 
+import com.smarttraffic.violation.dto.RecordStatus;
 import com.smarttraffic.violation.entity.Violation;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -27,5 +28,22 @@ public final class ViolationSpecifications {
                 maxSpeed == null
                         ? criteriaBuilder.conjunction()
                         : criteriaBuilder.lessThanOrEqualTo(root.get("speed"), maxSpeed);
+    }
+
+    public static Specification<Violation> hasStatus(RecordStatus status) {
+        return (root, query, criteriaBuilder) -> {
+            if (status == null) {
+                return criteriaBuilder.conjunction();
+            }
+
+            return switch (status) {
+                case VIOLATION -> criteriaBuilder.greaterThan(root.get("fine"), 0);
+                case EMERGENCY_EXEMPT -> criteriaBuilder.isTrue(root.get("isEmergency"));
+                case WITHIN_LIMIT -> criteriaBuilder.and(
+                        criteriaBuilder.equal(root.get("fine"), 0),
+                        criteriaBuilder.isFalse(root.get("isEmergency"))
+                );
+            };
+        };
     }
 }
