@@ -173,7 +173,7 @@ java -jar target/app.jar
    - `DB_PASSWORD=<password>`
    - `PORT=10000` (or Render-provided port)
    - `JPA_DDL_AUTO=update`
-   - `ALLOWED_ORIGINS=https://<your-netlify-site>.netlify.app`
+   - `ALLOWED_ORIGINS=https://trafficspringkush.netlify.app,http://localhost:5173,http://127.0.0.1:5173`
 
 8. Optional health check path:
 
@@ -187,7 +187,7 @@ java -jar target/app.jar
 2. In Netlify environment variables, set:
 
    ```text
-   VITE_API_BASE_URL=https://<your-render-backend>.onrender.com
+   VITE_API_BASE_URL=https://trafficspring.onrender.com
    ```
 
 3. In Netlify:
@@ -195,7 +195,7 @@ java -jar target/app.jar
    - Build command: `npm run build`
    - Publish directory: `dist`
 4. Deploy the site.
-5. After you get the Netlify domain, add it to backend CORS through `ALLOWED_ORIGINS`.
+5. Make sure the backend `ALLOWED_ORIGINS` value includes `https://trafficspringkush.netlify.app`.
 
 ## Notes
 
