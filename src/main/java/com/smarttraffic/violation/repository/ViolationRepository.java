@@ -8,9 +8,12 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface ViolationRepository extends JpaRepository<Violation, Long>, JpaSpecificationExecutor<Violation> {
 
-    @Query("select coalesce(sum(v.fine), 0) from Violation v")
+    @Query("select count(v) from Violation v where v.fine > 0")
+    long countChargeableViolations();
+
+    @Query("select coalesce(sum(v.fine), 0) from Violation v where v.fine > 0")
     long sumAllFines();
 
-    @Query("select v.zone, count(v) from Violation v group by v.zone")
+    @Query("select v.zone, count(v) from Violation v where v.fine > 0 group by v.zone")
     List<Object[]> countViolationsByZone();
 }

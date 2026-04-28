@@ -88,11 +88,15 @@ function App() {
   const [editingRecordId, setEditingRecordId] = useState(null);
   const [feedback, setFeedback] = useState(null);
   const [tableMessage, setTableMessage] = useState("");
+  const [pendingDeleteRecord, setPendingDeleteRecord] = useState(null);
+  const [isDashboardLoading, setIsDashboardLoading] = useState(true);
+  const [isRecordsLoading, setIsRecordsLoading] = useState(true);
   const pollRef = useRef(null);
 
   const zoneEntries = useMemo(() => {
     return Object.entries(stats.violationsPerZone || {}).sort((a, b) => b[1] - a[1]);
   }, [stats]);
+  const zoneMax = zoneEntries.length ? Math.max(...zoneEntries.map(([, count]) => count)) : 0;
 
   const topZone = zoneEntries.length ? zoneEntries[0][0] : "No data";
   const statusTheme = statusModes[status.mode] || statusModes.checking;
@@ -110,6 +114,7 @@ function App() {
   }, [page, pageSize, sortBy, sortOrder]);
 
   async function loadDashboard() {
+    setIsDashboardLoading(true);
     setStatus({
       mode: "waking",
       note: "Checking the API. The first request can take longer than usual."
@@ -143,10 +148,13 @@ function App() {
       });
       setTableMessage(error.message || "Could not load dashboard data.");
       startPolling();
+    } finally {
+      setIsDashboardLoading(false);
     }
   }
 
   async function loadRecords() {
+    setIsRecordsLoading(true);
     try {
       const response = await buildRecordsRequest();
       setRecordsPage(response);
@@ -154,6 +162,8 @@ function App() {
     } catch (error) {
       setTableMessage(error.message || "Could not load records.");
       throw error;
+    } finally {
+      setIsRecordsLoading(false);
     }
   }
 
@@ -256,8 +266,12 @@ function App() {
       isEmergency: form.isEmergency
     };
 
-    if (!payload.vehicleId || !payload.speed || !payload.zone) {
+    if (!payload.vehicleId || !payload.zone || !form.speed) {
       setFeedback({ type: "error", text: "Please complete vehicle ID, speed, and zone before submitting." });
+      return;
+    }
+    if (!Number.isFinite(payload.speed) || payload.speed <= 0) {
+      setFeedback({ type: "error", text: "Speed must be a valid number greater than zero." });
       return;
     }
 
@@ -276,11 +290,12 @@ function App() {
           method: "POST",
           body: JSON.stringify(payload)
         });
+        const savedRecord = result.violation;
         setFeedback({
-          type: result.violationDetected ? "success" : "warning",
-          text: result.violationDetected
-            ? `Violation saved. Fine applied: ${formatCurrency(result.fine)}.`
-            : "No violation detected. The vehicle is within the configured rules."
+          type: getFeedbackType(savedRecord),
+          text: savedRecord
+            ? `${result.message} Record #${savedRecord.id} saved.`
+            : result.message || "Traffic check completed."
         });
       }
 
@@ -317,12 +332,9 @@ function App() {
   }
 
   async function handleDelete(recordId) {
-    if (!window.confirm(`Delete violation record #${recordId}?`)) {
-      return;
-    }
-
     try {
       await apiFetch(`/traffic/${recordId}`, { method: "DELETE" });
+      setPendingDeleteRecord(null);
       setTableMessage(`Record #${recordId} deleted.`);
       if (page > 0 && recordsPage.content.length === 1) {
         setPage((current) => Math.max(0, current - 1));
@@ -423,27 +435,44 @@ function App() {
       <main className="mx-auto grid max-w-7xl gap-5 px-4 py-5 sm:px-6 lg:px-8">
         <section className="grid gap-5 lg:grid-cols-[1.55fr_0.95fr]">
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            <MetricCard icon={FiAlertTriangle} label="Total violations" value={stats.totalViolations} footnote="Recorded cases in the current database" />
-            <MetricCard icon={FiTrendingUp} label="Total fine collected" value={formatCurrency(stats.totalFineCollected)} footnote="Total amount across stored violations" />
-            <MetricCard icon={FiMapPin} label="Most active zone" value={topZone} footnote="Zone with the highest number of violations" />
+            <MetricCard icon={FiAlertTriangle} label="Total violations" value={stats.totalViolations} footnote="Recorded cases in the current database" loading={isDashboardLoading} />
+            <MetricCard icon={FiTrendingUp} label="Total fine collected" value={formatCurrency(stats.totalFineCollected)} footnote="Total amount across stored violations" loading={isDashboardLoading} />
+            <MetricCard icon={FiMapPin} label="Most active zone" value={topZone} footnote="Zone with the highest number of violations" loading={isDashboardLoading} />
           </div>
 
           <div className="panel panel-soft p-5">
             <SectionHeader eyebrow="Analytics" title="Violations by zone" />
-            <div className="mt-4 grid gap-3">
-              {zoneEntries.length ? (
-                zoneEntries.map(([zone, count]) => (
-                  <motion.div
-                    key={zone}
-                    layout
-                    className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/10 px-4 py-3"
-                  >
-                    <span className="min-w-0 break-words font-medium text-ink">{zone}</span>
-                    <span className="shrink-0 rounded-full bg-white/90 px-3 py-1 text-sm font-semibold text-slate-700">{count}</span>
-                  </motion.div>
-                ))
+            <div className="mt-4 grid gap-5">
+              {isDashboardLoading ? (
+                <AnalyticsSkeleton />
               ) : (
-                <EmptyInline text="No zone data yet." />
+                <ZoneChart entries={zoneEntries} maxValue={zoneMax} />
+              )}
+              {!isDashboardLoading && zoneEntries.length ? (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {zoneEntries.map(([zone, count]) => (
+                    <motion.div
+                      key={zone}
+                      layout
+                      className="rounded-lg border border-white/10 bg-white/40 px-4 py-3"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="min-w-0 break-words font-medium text-ink">{zone}</span>
+                        <span className="shrink-0 rounded-full bg-white px-3 py-1 text-sm font-semibold text-slate-700">{count}</span>
+                      </div>
+                      <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
+                        <motion.div
+                          className="h-full rounded-full bg-[linear-gradient(90deg,#0f766e_0%,#14b8a6_100%)]"
+                          initial={{ width: 0 }}
+                          animate={{ width: `${zoneMax ? (count / zoneMax) * 100 : 0}%` }}
+                          transition={{ duration: 0.45, ease: "easeOut" }}
+                        />
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              ) : (
+                !isDashboardLoading && <EmptyInline text="No zone data yet." />
               )}
             </div>
           </div>
@@ -464,7 +493,7 @@ function App() {
               </button>
             </div>
 
-            <form className="mt-5 grid gap-5" onSubmit={handleSubmit}>
+            <form className="mt-5 grid gap-5" onSubmit={handleSubmit} noValidate>
               <div className="grid gap-4 md:grid-cols-2">
                 <Field label="Vehicle ID">
                   <input
@@ -557,9 +586,9 @@ function App() {
 
         <section className="panel panel-soft p-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <SectionHeader eyebrow="Records" title="Violation registry" />
+            <SectionHeader eyebrow="Records" title="Traffic records" />
             <div className="text-sm text-slate-500">
-              Showing {recordsPage.numberOfElements || 0} of {recordsPage.totalElements || 0} records
+              {isRecordsLoading ? "Loading records..." : `Showing ${recordsPage.numberOfElements || 0} of ${recordsPage.totalElements || 0} records`}
             </div>
           </div>
 
@@ -626,7 +655,9 @@ function App() {
           </form>
 
           <div className="mt-5 grid gap-3 md:hidden">
-            {recordsPage.content.length ? (
+            {isRecordsLoading ? (
+              Array.from({ length: 3 }).map((_, index) => <RecordCardSkeleton key={index} />)
+            ) : recordsPage.content.length ? (
               recordsPage.content.map((record) => (
                 <article key={record.id} className="rounded-lg border border-white/10 bg-white/90 p-4 shadow-[0_10px_24px_rgba(15,23,36,0.08)]">
                   <div className="flex items-start justify-between gap-3">
@@ -634,8 +665,8 @@ function App() {
                       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Record</p>
                       <h3 className="mt-1 text-lg font-semibold text-ink">#{record.id}</h3>
                     </div>
-                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${record.isEmergency ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
-                      {record.isEmergency ? "Emergency" : "Standard"}
+                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getRecordStatus(record).className}`}>
+                      {getRecordStatus(record).label}
                     </span>
                   </div>
 
@@ -644,6 +675,7 @@ function App() {
                     <MobileData label="Speed" value={`${record.speed} km/h`} />
                     <MobileData label="Zone" value={record.zone} />
                     <MobileData label="Fine" value={formatCurrency(record.fine)} />
+                    <MobileData label="Status" value={getRecordStatus(record).label} />
                     <MobileData label="Created" value={formatDate(record.createdAt)} full />
                   </div>
 
@@ -652,7 +684,7 @@ function App() {
                       <FiEdit3 />
                       Edit
                     </button>
-                    <button className="button-secondary flex-1 gap-2 text-rose-600" type="button" onClick={() => handleDelete(record.id)}>
+                    <button className="button-secondary flex-1 gap-2 text-rose-600" type="button" onClick={() => setPendingDeleteRecord(record)}>
                       <FiTrash2 />
                       Delete
                     </button>
@@ -669,7 +701,7 @@ function App() {
               <table className="min-w-[980px] w-full border-collapse">
                 <thead className="bg-slate-100/90 text-left text-xs uppercase tracking-[0.16em] text-slate-500">
                   <tr>
-                    {["ID", "Vehicle", "Speed", "Zone", "Fine", "Emergency", "Created", "Actions"].map((heading) => (
+                    {["ID", "Vehicle", "Speed", "Zone", "Fine", "Status", "Created", "Actions"].map((heading) => (
                       <th key={heading} className="border-b border-line px-4 py-3 font-semibold">
                         {heading}
                       </th>
@@ -677,7 +709,19 @@ function App() {
                   </tr>
                 </thead>
                 <tbody className="bg-white text-sm">
-                  {recordsPage.content.length ? (
+                  {isRecordsLoading ? (
+                    Array.from({ length: 5 }).map((_, index) => (
+                      <tr key={index} className="border-b border-line/80 last:border-b-0">
+                        <td colSpan="8" className="px-4 py-4">
+                          <div className="grid grid-cols-[0.55fr_1.1fr_0.9fr_1fr_0.9fr_1fr_1.2fr_0.8fr] gap-3">
+                            {Array.from({ length: 8 }).map((__, cellIndex) => (
+                              <SkeletonBlock key={cellIndex} className="h-10" />
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : recordsPage.content.length ? (
                     recordsPage.content.map((record) => (
                       <tr key={record.id} className="border-b border-line/80 last:border-b-0">
                         <td className="px-4 py-4 font-semibold text-slate-700">{record.id}</td>
@@ -686,8 +730,8 @@ function App() {
                         <td className="px-4 py-4">{record.zone}</td>
                         <td className="px-4 py-4">{formatCurrency(record.fine)}</td>
                         <td className="px-4 py-4">
-                          <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${record.isEmergency ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
-                            {record.isEmergency ? "Emergency" : "Standard"}
+                          <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getRecordStatus(record).className}`}>
+                            {getRecordStatus(record).label}
                           </span>
                         </td>
                         <td className="whitespace-nowrap px-4 py-4">{formatDate(record.createdAt)}</td>
@@ -696,7 +740,7 @@ function App() {
                             <button className="button-secondary h-9 px-3" type="button" onClick={() => handleEdit(record.id)}>
                               <FiEdit3 />
                             </button>
-                            <button className="button-secondary h-9 px-3 text-rose-600" type="button" onClick={() => handleDelete(record.id)}>
+                            <button className="button-secondary h-9 px-3 text-rose-600" type="button" onClick={() => setPendingDeleteRecord(record)}>
                               <FiTrash2 />
                             </button>
                           </div>
@@ -716,7 +760,7 @@ function App() {
           </div>
 
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-sm text-slate-500">{tableMessage}</div>
+            <div className="text-sm text-slate-500">{isRecordsLoading ? "" : tableMessage}</div>
             <div className="flex items-center justify-between gap-3 sm:justify-end">
               <button className="button-secondary h-10 px-3" type="button" disabled={recordsPage.first} onClick={() => setPage((current) => Math.max(0, current - 1))}>
                 <FiChevronLeft />
@@ -730,6 +774,37 @@ function App() {
             </div>
           </div>
         </section>
+
+        <AnimatePresence>
+          {pendingDeleteRecord && (
+            <motion.div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.div
+                className="panel panel-soft w-full max-w-md p-5"
+                initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              >
+                <SectionHeader eyebrow="Confirm" title="Delete record" />
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  Delete record #{pendingDeleteRecord.id} for {pendingDeleteRecord.vehicleId}? This action cannot be undone.
+                </p>
+                <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-end">
+                  <button className="button-secondary w-full sm:w-auto" type="button" onClick={() => setPendingDeleteRecord(null)}>
+                    Cancel
+                  </button>
+                  <button className="button-primary w-full bg-rose-600 hover:bg-rose-700 focus:ring-rose-100 sm:w-auto" type="button" onClick={() => handleDelete(pendingDeleteRecord.id)}>
+                    Delete record
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
     </div>
   );
@@ -744,7 +819,7 @@ function SectionHeader({ eyebrow, title }) {
   );
 }
 
-function MetricCard({ icon: Icon, label, value, footnote }) {
+function MetricCard({ icon: Icon, label, value, footnote, loading = false }) {
   return (
     <motion.article
       className="panel panel-soft flex min-h-[168px] flex-col justify-between p-5"
@@ -755,13 +830,17 @@ function MetricCard({ icon: Icon, label, value, footnote }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <span className="text-sm font-medium text-slate-500">{label}</span>
-          <div className="mt-3 break-words text-2xl font-semibold text-ink sm:text-3xl">{value}</div>
+          <div className="mt-3 break-words text-2xl font-semibold text-ink sm:text-3xl">
+            {loading ? <SkeletonBlock className="h-8 w-28 sm:h-9 sm:w-36" /> : value}
+          </div>
         </div>
         <div className="rounded-2xl bg-slate-900/5 p-3 text-teal-700">
           <Icon className="text-xl" />
         </div>
       </div>
-      <p className="mt-4 text-sm leading-6 text-slate-500">{footnote}</p>
+      <div className="mt-4 text-sm leading-6 text-slate-500">
+        {loading ? <SkeletonBlock className="h-4 w-full max-w-[220px]" /> : footnote}
+      </div>
     </motion.article>
   );
 }
@@ -807,6 +886,122 @@ function MobileData({ label, value, full = false }) {
       <p className="mt-1 text-sm text-ink">{value}</p>
     </div>
   );
+}
+
+function getRecordStatus(record) {
+  if (record.isEmergency) {
+    return {
+      label: "Emergency exempt",
+      className: "bg-sky-50 text-sky-700"
+    };
+  }
+  if (Number(record.fine) > 0) {
+    return {
+      label: "Violation",
+      className: "bg-rose-50 text-rose-700"
+    };
+  }
+  return {
+    label: "Within limit",
+    className: "bg-emerald-50 text-emerald-700"
+  };
+}
+
+function getFeedbackType(record) {
+  if (!record) return "warning";
+  if (record.isEmergency) return "warning";
+  if (Number(record.fine) > 0) return "success";
+  return "warning";
+}
+
+function ZoneChart({ entries, maxValue }) {
+  if (!entries.length) {
+    return <EmptyInline text="Charts will appear once zone data is available." />;
+  }
+
+  return (
+    <div className="rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,36,0.96)_0%,rgba(25,42,63,0.94)_100%)] p-4 text-white shadow-[0_18px_40px_rgba(15,23,36,0.18)]">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-300">Zone chart</p>
+          <h3 className="mt-1 text-lg font-semibold text-white">Violation distribution</h3>
+        </div>
+        <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-slate-200">
+          Peak {maxValue}
+        </span>
+      </div>
+
+      <div className="space-y-3">
+        {entries.map(([zone, count]) => (
+          <div key={zone} className="grid gap-2 sm:grid-cols-[minmax(0,150px)_1fr_auto] sm:items-center">
+            <div className="truncate text-sm font-medium text-slate-100">{zone}</div>
+            <div className="h-3 overflow-hidden rounded-full bg-white/10">
+              <motion.div
+                className="h-full rounded-full bg-[linear-gradient(90deg,#f59e0b_0%,#2dd4bf_100%)]"
+                initial={{ width: 0 }}
+                animate={{ width: `${maxValue ? (count / maxValue) * 100 : 0}%` }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+              />
+            </div>
+            <div className="text-sm font-semibold text-white">{count}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AnalyticsSkeleton() {
+  return (
+    <div className="rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,36,0.96)_0%,rgba(25,42,63,0.94)_100%)] p-4 text-white shadow-[0_18px_40px_rgba(15,23,36,0.18)]">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="space-y-2">
+          <SkeletonBlock className="h-3 w-24 bg-white/15" />
+          <SkeletonBlock className="h-6 w-40 bg-white/15" />
+        </div>
+        <SkeletonBlock className="h-8 w-16 rounded-full bg-white/15" />
+      </div>
+      <div className="space-y-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="grid gap-2 sm:grid-cols-[minmax(0,150px)_1fr_auto] sm:items-center">
+            <SkeletonBlock className="h-4 w-24 bg-white/15" />
+            <SkeletonBlock className="h-3 w-full rounded-full bg-white/15" />
+            <SkeletonBlock className="h-4 w-8 bg-white/15" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RecordCardSkeleton() {
+  return (
+    <article className="rounded-lg border border-white/10 bg-white/90 p-4 shadow-[0_10px_24px_rgba(15,23,36,0.08)]">
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-2">
+          <SkeletonBlock className="h-3 w-14" />
+          <SkeletonBlock className="h-6 w-20" />
+        </div>
+        <SkeletonBlock className="h-7 w-28 rounded-full" />
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <div key={index} className={index === 4 ? "sm:col-span-2" : ""}>
+            <SkeletonBlock className="h-3 w-16" />
+            <SkeletonBlock className="mt-2 h-5 w-full max-w-[160px]" />
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 flex gap-2">
+        <SkeletonBlock className="h-11 flex-1 rounded-lg" />
+        <SkeletonBlock className="h-11 flex-1 rounded-lg" />
+      </div>
+    </article>
+  );
+}
+
+function SkeletonBlock({ className = "" }) {
+  return <div className={`animate-pulse rounded-md bg-slate-200/90 ${className}`} />;
 }
 
 function formatCurrency(value) {

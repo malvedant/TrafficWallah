@@ -36,17 +36,7 @@ public class ViolationServiceImpl implements ViolationService {
     @Override
     public TrafficCheckResponse checkTrafficViolation(TrafficCheckRequest request) {
         boolean violationDetected = request.getSpeed() > SPEED_LIMIT && !Boolean.TRUE.equals(request.getIsEmergency());
-
-        if (!violationDetected) {
-            return TrafficCheckResponse.builder()
-                    .violationDetected(false)
-                    .message("No violation detected")
-                    .fine(0)
-                    .violation(null)
-                    .build();
-        }
-
-        int fine = calculateFine(request.getSpeed());
+        int fine = recalculateFine(request.getSpeed(), Boolean.TRUE.equals(request.getIsEmergency()));
         Violation violation = Violation.builder()
                 .vehicleId(request.getVehicleId().trim())
                 .speed(request.getSpeed())
@@ -56,12 +46,13 @@ public class ViolationServiceImpl implements ViolationService {
                 .build();
 
         Violation savedViolation = violationRepository.save(violation);
-        log.info("Violation recorded for vehicleId={}, zone={}, speed={}, fine={}",
-                savedViolation.getVehicleId(), savedViolation.getZone(), savedViolation.getSpeed(), savedViolation.getFine());
+        log.info("Traffic check recorded for vehicleId={}, zone={}, speed={}, fine={}, emergency={}",
+                savedViolation.getVehicleId(), savedViolation.getZone(), savedViolation.getSpeed(),
+                savedViolation.getFine(), savedViolation.getIsEmergency());
 
         return TrafficCheckResponse.builder()
-                .violationDetected(true)
-                .message("Violation detected and saved successfully")
+                .violationDetected(violationDetected)
+                .message(buildTrafficCheckMessage(savedViolation))
                 .fine(fine)
                 .violation(mapToResponse(savedViolation))
                 .build();
@@ -129,7 +120,7 @@ public class ViolationServiceImpl implements ViolationService {
         }
 
         return StatsResponse.builder()
-                .totalViolations(violationRepository.count())
+                .totalViolations(violationRepository.countChargeableViolations())
                 .totalFineCollected(violationRepository.sumAllFines())
                 .violationsPerZone(violationsPerZone)
                 .build();
@@ -161,6 +152,16 @@ public class ViolationServiceImpl implements ViolationService {
             return 2000;
         }
         return 1000;
+    }
+
+    private String buildTrafficCheckMessage(Violation violation) {
+        if (Boolean.TRUE.equals(violation.getIsEmergency())) {
+            return "Emergency vehicle recorded. No fine applied.";
+        }
+        if (violation.getFine() > 0) {
+            return "Violation detected and saved successfully.";
+        }
+        return "Vehicle recorded. No violation detected.";
     }
 
     private ViolationResponse mapToResponse(Violation violation) {
