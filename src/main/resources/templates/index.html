@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Traffic Violation System</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}" href="/css/app.css">
+</head>
+<body>
+<div class="app-shell">
+    <header class="topbar">
+        <div class="brand-block">
+            <p class="eyebrow">Traffic Operations</p>
+            <h1>Smart Traffic Violation System</h1>
+            <p class="subcopy">Monitor overspeeding incidents, review fines, and manage enforcement records from one quiet dashboard.</p>
+        </div>
+        <div class="topbar-actions">
+            <button class="ghost-button" id="refreshDashboardButton" type="button">Refresh Data</button>
+            <span class="status-pill" id="connectionStatus">Connecting</span>
+        </div>
+    </header>
+
+    <main class="page-layout">
+        <section class="overview-band">
+            <div class="metric-strip">
+                <article class="metric-card">
+                    <span class="metric-label">Total Violations</span>
+                    <strong class="metric-value" id="totalViolations">0</strong>
+                    <span class="metric-footnote">Recorded cases in system</span>
+                </article>
+                <article class="metric-card">
+                    <span class="metric-label">Total Fine Collected</span>
+                    <strong class="metric-value" id="totalFineCollected">Rs. 0</strong>
+                    <span class="metric-footnote">Aggregated across all records</span>
+                </article>
+                <article class="metric-card">
+                    <span class="metric-label">Active Zone Watch</span>
+                    <strong class="metric-value" id="topZone">No data</strong>
+                    <span class="metric-footnote">Zone with highest violations</span>
+                </article>
+            </div>
+            <div class="zone-panel">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Analytics</p>
+                        <h2>Violations per zone</h2>
+                    </div>
+                </div>
+                <div class="zone-list" id="zoneStatsList">
+                    <p class="empty-inline">No zone data yet.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="workbench-band">
+            <div class="form-panel">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Detection</p>
+                        <h2>Check vehicle for violation</h2>
+                    </div>
+                    <span class="helper-text">Speed above 80 triggers a violation unless marked emergency.</span>
+                </div>
+
+                <form id="violationForm" class="violation-form">
+                    <input type="hidden" id="recordId">
+                    <div class="form-grid">
+                        <label>
+                            <span>Vehicle ID</span>
+                            <input id="vehicleId" name="vehicleId" type="text" placeholder="MH12AB1234" required>
+                        </label>
+                        <label>
+                            <span>Speed</span>
+                            <input id="speed" name="speed" type="number" min="1" placeholder="110" required>
+                        </label>
+                        <label>
+                            <span>Zone</span>
+                            <input id="zone" name="zone" type="text" placeholder="Pune" required>
+                        </label>
+                        <label class="toggle-field">
+                            <span>Emergency vehicle</span>
+                            <button id="emergencyToggle" class="toggle-button" type="button" aria-pressed="false">
+                                <span class="toggle-track">
+                                    <span class="toggle-thumb"></span>
+                                </span>
+                                <span id="emergencyLabel">No</span>
+                            </button>
+                            <input id="isEmergency" name="isEmergency" type="hidden" value="false">
+                        </label>
+                    </div>
+                    <div class="form-actions">
+                        <button id="submitButton" class="primary-button" type="submit">Check & Save Violation</button>
+                        <button id="cancelEditButton" class="ghost-button hidden" type="button">Cancel Edit</button>
+                    </div>
+                </form>
+
+                <div class="feedback-panel hidden" id="resultPanel"></div>
+            </div>
+
+            <div class="insight-panel">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Operations</p>
+                        <h2>Fine rules</h2>
+                    </div>
+                </div>
+                <div class="rule-list">
+                    <div class="rule-row">
+                        <span class="rule-speed">81 - 100 km/h</span>
+                        <strong>Rs. 1000</strong>
+                    </div>
+                    <div class="rule-row">
+                        <span class="rule-speed">101 - 120 km/h</span>
+                        <strong>Rs. 2000</strong>
+                    </div>
+                    <div class="rule-row">
+                        <span class="rule-speed">Above 120 km/h</span>
+                        <strong>Rs. 5000</strong>
+                    </div>
+                </div>
+                <div class="info-callout">
+                    Emergency vehicles are exempt even if they exceed the standard speed threshold.
+                </div>
+            </div>
+        </section>
+
+        <section class="records-band">
+            <div class="records-toolbar">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Records</p>
+                        <h2>Violation registry</h2>
+                    </div>
+                </div>
+                <form id="filterForm" class="filter-grid">
+                    <label>
+                        <span>Zone</span>
+                        <input id="filterZone" type="text" placeholder="Pune">
+                    </label>
+                    <label>
+                        <span>Min Speed</span>
+                        <input id="filterMinSpeed" type="number" min="1" placeholder="90">
+                    </label>
+                    <label>
+                        <span>Max Speed</span>
+                        <input id="filterMaxSpeed" type="number" min="1" placeholder="150">
+                    </label>
+                    <label>
+                        <span>Sort By</span>
+                        <select id="sortBy">
+                            <option value="createdAt">Timestamp</option>
+                            <option value="speed">Speed</option>
+                            <option value="fine">Fine</option>
+                            <option value="zone">Zone</option>
+                            <option value="vehicleId">Vehicle ID</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>Order</span>
+                        <select id="sortOrder">
+                            <option value="desc">Descending</option>
+                            <option value="asc">Ascending</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>Page Size</span>
+                        <select id="pageSize">
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                        </select>
+                    </label>
+                    <div class="filter-actions">
+                        <button class="primary-button" type="submit">Apply Filters</button>
+                        <button class="ghost-button" id="resetFiltersButton" type="button">Reset</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="table-shell">
+                <div class="table-meta">
+                    <span id="tableSummary">Loading records...</span>
+                    <span id="tableMessage" class="table-message"></span>
+                </div>
+                <div class="table-scroll">
+                    <table class="records-table">
+                        <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Vehicle ID</th>
+                            <th>Speed</th>
+                            <th>Zone</th>
+                            <th>Fine</th>
+                            <th>Emergency</th>
+                            <th>Created At</th>
+                            <th>Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody id="recordsTableBody">
+                        <tr>
+                            <td colspan="8" class="table-empty">Loading records...</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination-row">
+                    <button class="ghost-button" id="prevPageButton" type="button">Previous</button>
+                    <span id="pageIndicator">Page 1</span>
+                    <button class="ghost-button" id="nextPageButton" type="button">Next</button>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<script th:src="@{/js/app.js}" src="/js/app.js"></script>
+</body>
+</html>

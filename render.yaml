@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: smart-traffic-violation-system
+    runtime: java
+    plan: free
+    buildCommand: mvn clean install
+    startCommand: java -jar target/app.jar
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: JPA_DDL_AUTO
+        value: update
+      - key: JPA_SHOW_SQL
+        value: false
