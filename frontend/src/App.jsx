@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
+} from "recharts";
+import {
   FiActivity,
   FiAlertTriangle,
   FiChevronLeft,
@@ -96,7 +106,6 @@ function App() {
   const zoneEntries = useMemo(() => {
     return Object.entries(stats.violationsPerZone || {}).sort((a, b) => b[1] - a[1]);
   }, [stats]);
-  const zoneMax = zoneEntries.length ? Math.max(...zoneEntries.map(([, count]) => count)) : 0;
 
   const topZone = zoneEntries.length ? zoneEntries[0][0] : "No data";
   const statusTheme = statusModes[status.mode] || statusModes.checking;
@@ -446,7 +455,7 @@ function App() {
               {isDashboardLoading ? (
                 <AnalyticsSkeleton />
               ) : (
-                <ZoneChart entries={zoneEntries} maxValue={zoneMax} />
+                <ZoneChart entries={zoneEntries} />
               )}
               {!isDashboardLoading && zoneEntries.length ? (
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -913,137 +922,90 @@ function getFeedbackType(record) {
   return "warning";
 }
 
-function ZoneChart({ entries, maxValue }) {
+function ZoneChart({ entries }) {
   if (!entries.length) {
     return <EmptyInline text="Charts will appear once zone data is available." />;
   }
 
-  const chartEntries = entries.slice(0, 6);
-  const chartHeight = 260;
-  const chartWidth = 720;
-  const leftPad = 44;
-  const rightPad = 20;
-  const topPad = 24;
-  const bottomPad = 46;
-  const plotWidth = chartWidth - leftPad - rightPad;
-  const plotHeight = chartHeight - topPad - bottomPad;
-  const barGap = 18;
-  const barWidth = Math.max(36, (plotWidth - (chartEntries.length - 1) * barGap) / chartEntries.length);
-  const ticks = buildTicks(maxValue);
+  const chartEntries = entries.slice(0, 6).map(([zone, count]) => ({
+    zone,
+    shortZone: truncateLabel(zone, 10),
+    count
+  }));
+  const barColors = ["#0f766e", "#14b8a6", "#22c55e", "#38bdf8", "#f59e0b", "#fb7185"];
 
   return (
-    <div className="rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,36,0.96)_0%,rgba(25,42,63,0.94)_100%)] p-4 text-white shadow-[0_18px_40px_rgba(15,23,36,0.18)]">
+    <div className="rounded-xl border border-line bg-[linear-gradient(180deg,#f8fbfd_0%,#eef4f8_100%)] p-4 text-ink shadow-[0_18px_40px_rgba(15,23,36,0.08)]">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-300">Zone chart</p>
-          <h3 className="mt-1 text-lg font-semibold text-white">Violations by zone</h3>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Zone chart</p>
+          <h3 className="mt-1 text-lg font-semibold text-ink">Violations by zone</h3>
         </div>
-        <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-slate-200">
+        <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
           Top {chartEntries.length} zones
         </span>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-white/10 bg-white/[0.03] p-3">
-        <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-[260px] w-full" role="img" aria-label="Bar chart of violations by zone">
-          {ticks.map((tick) => {
-            const y = topPad + plotHeight - (tick / Math.max(maxValue, 1)) * plotHeight;
-            return (
-              <g key={tick}>
-                <line
-                  x1={leftPad}
-                  x2={chartWidth - rightPad}
-                  y1={y}
-                  y2={y}
-                  stroke="rgba(255,255,255,0.10)"
-                  strokeDasharray="4 6"
-                />
-                <text
-                  x={leftPad - 10}
-                  y={y + 4}
-                  textAnchor="end"
-                  fontSize="12"
-                  fill="rgba(226,232,240,0.9)"
-                >
-                  {tick}
-                </text>
-              </g>
-            );
-          })}
-
-          <line x1={leftPad} x2={leftPad} y1={topPad} y2={topPad + plotHeight} stroke="rgba(255,255,255,0.18)" />
-          <line x1={leftPad} x2={chartWidth - rightPad} y1={topPad + plotHeight} y2={topPad + plotHeight} stroke="rgba(255,255,255,0.18)" />
-
-          {chartEntries.map(([zone, count], index) => {
-            const x = leftPad + index * (barWidth + barGap);
-            const barHeight = maxValue ? (count / maxValue) * plotHeight : 0;
-            const y = topPad + plotHeight - barHeight;
-            return (
-              <g key={zone}>
-                <motion.rect
-                  initial={{ height: 0, y: topPad + plotHeight }}
-                  animate={{ height: barHeight, y }}
-                  transition={{ duration: 0.45, ease: "easeOut", delay: index * 0.06 }}
-                  x={x}
-                  y={y}
-                  width={barWidth}
-                  height={barHeight}
-                  rx="10"
-                  fill="url(#zoneBarGradient)"
-                />
-                <text
-                  x={x + barWidth / 2}
-                  y={y - 8}
-                  textAnchor="middle"
-                  fontSize="12"
-                  fontWeight="600"
-                  fill="rgba(255,255,255,0.95)"
-                >
-                  {count}
-                </text>
-                <text
-                  x={x + barWidth / 2}
-                  y={chartHeight - 16}
-                  textAnchor="middle"
-                  fontSize="12"
-                  fill="rgba(226,232,240,0.95)"
-                >
-                  {truncateLabel(zone, 12)}
-                </text>
-                <title>{`${zone}: ${count} violations`}</title>
-              </g>
-            );
-          })}
-
-          <defs>
-            <linearGradient id="zoneBarGradient" x1="0%" y1="100%" x2="0%" y2="0%">
-              <stop offset="0%" stopColor="#14b8a6" />
-              <stop offset="55%" stopColor="#2dd4bf" />
-              <stop offset="100%" stopColor="#f59e0b" />
-            </linearGradient>
-          </defs>
-        </svg>
+      <div className="overflow-hidden rounded-lg border border-line bg-white p-3">
+        <div className="h-[280px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartEntries} margin={{ top: 12, right: 8, left: -18, bottom: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#d9e2ec" vertical={false} />
+              <XAxis dataKey="shortZone" tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
+              <YAxis allowDecimals={false} tick={{ fill: "#64748b", fontSize: 12 }} axisLine={false} tickLine={false} />
+              <Tooltip cursor={{ fill: "rgba(15, 23, 42, 0.04)" }} content={<ZoneChartTooltip />} />
+              <Bar dataKey="count" radius={[10, 10, 0, 0]} maxBarSize={56}>
+                {chartEntries.map((entry, index) => (
+                  <Cell key={entry.zone} fill={barColors[index % barColors.length]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-4 text-xs text-slate-300">
-        <span className="inline-flex items-center gap-2">
-          <span className="h-2.5 w-2.5 rounded-full bg-teal-400" />
-          Chargeable violations
-        </span>
-        <span>Only fined records are included in analytics.</span>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        {chartEntries.map((entry, index) => (
+          <div key={entry.zone} className="rounded-lg border border-line bg-white px-3 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-ink" title={entry.zone}>{entry.zone}</p>
+                <p className="mt-1 text-xs text-slate-500">Chargeable violations</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: barColors[index % barColors.length] }} />
+                <span className="text-sm font-semibold text-slate-700">{entry.count}</span>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
-function buildTicks(maxValue) {
-  if (!maxValue) return [0, 1, 2, 3];
-  const step = Math.max(1, Math.ceil(maxValue / 4));
-  return [0, step, step * 2, step * 3, step * 4];
-}
 
 function truncateLabel(value, maxLength) {
   if (value.length <= maxLength) return value;
   return `${value.slice(0, Math.max(0, maxLength - 1))}…`;
+}
+
+function ZoneChartTooltip({ active, payload }) {
+  if (!active || !payload?.length) {
+    return null;
+  }
+
+  const item = payload[0]?.payload;
+  if (!item) {
+    return null;
+  }
+
+  return (
+    <div className="rounded-lg border border-line bg-white px-3 py-2 shadow-lg">
+      <p className="text-sm font-semibold text-ink">{item.zone}</p>
+      <p className="mt-1 text-xs text-slate-600">{item.count} chargeable violation{item.count === 1 ? "" : "s"}</p>
+    </div>
+  );
 }
 
 function AnalyticsSkeleton() {
