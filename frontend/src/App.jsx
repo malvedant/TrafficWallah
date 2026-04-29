@@ -843,7 +843,7 @@ function MobileData({ label, value, full = false }) {
   );
 }
 
-function getRecordStatus(record) {
+export function getRecordStatus(record) {
   if (record.isEmergency) {
     return {
       label: "Emergency exempt",
@@ -860,6 +860,21 @@ function getRecordStatus(record) {
     label: "Within limit",
     className: "bg-emerald-50 text-emerald-700"
   };
+}
+
+export function formatCurrency(value) {
+  return `Rs. ${Number(value || 0).toLocaleString("en-IN")}`;
+}
+
+export function formatDate(value) {
+  if (!value) return "-";
+  return new Date(value).toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
 }
 
 function getFeedbackType(record) {
