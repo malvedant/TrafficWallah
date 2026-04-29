@@ -680,8 +680,37 @@ function App() {
               </div>
             ) : recordsPage.content?.length ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {recordsPage.content.map(record => (
-                  <RecordCard key={record.id} record={record} />
+{recordsPage.content.map((record, index) => (
+                  <div key={record.id || index} className="rounded-2xl border border-orange-200/50 bg-white p-6 shadow-subtle hover:shadow-lg hover:border-orange-300">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="space-y-1">
+                        <h3 className="font-bold text-xl text-orange-900 truncate" title={record.vehicleId}>
+                          {record.vehicleId}
+                        </h3>
+                        <p className="text-sm text-orange-700">{record.zone}</p>
+                      </div>
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100">
+                        <button className="p-2 rounded-xl bg-orange-100 text-orange-700 hover:bg-orange-200">Edit</button>
+                        <button className="p-2 rounded-xl bg-rose-100 text-rose-700 hover:bg-rose-200">Delete</button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <p className="text-xs font-semibold uppercase text-orange-600">Speed</p>
+                        <p className="text-2xl font-bold text-orange-900">{record.speed} km/h</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold uppercase text-orange-600">Fine</p>
+                        <p className="text-xl font-bold text-orange-900">{formatCurrency(record.fine)}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${record.isEmergency ? 'bg-sky-50 text-sky-700' : Number(record.fine) > 0 ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                        {record.isEmergency ? 'Emergency exempt' : Number(record.fine) > 0 ? 'Violation' : 'Within limit'}
+                      </span>
+                      <p className="text-sm text-orange-700">{new Date(record.createdAt).toLocaleString('en-IN')}</p>
+                    </div>
+                  </div>
                 ))}
               </div>
             ) : (
